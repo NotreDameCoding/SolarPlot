@@ -1,0 +1,10 @@
+{
+  "name": "SolarPlot",
+  "short_name": "SolarPlot",
+  "description": "What to plant, where and when, with your garden as a living scene.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F4EEDC",
+  "theme_color": "#4E6B45",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
