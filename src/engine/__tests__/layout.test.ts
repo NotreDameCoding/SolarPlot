@@ -121,10 +121,20 @@ describe('plan for me', () => {
       expect(mine.every((a) => mine.some((b) => a !== b && touches(rectOf(a), rectOf(b))))).toBe(true);
     }
   });
-  it('caps any one crop at six tiles', () => {
+  it('fills the whole bed even when only a few crops are chosen', () => {
     const p = autoPlan(bed(6, 6), ['lettuce', 'carrot']);
-    expect(p.plantings.filter((x) => x.plantId === 'lettuce')).toHaveLength(6);
-    expect(p.plantings).toHaveLength(12);
+    expect(p.plantings).toHaveLength(36);
+    expect(p.plantings.filter((x) => x.plantId === 'lettuce')).toHaveLength(18);
+  });
+  it('fills a big bed', () => {
+    const p = autoPlan(bed(12, 8), starterSet('food', 'full', 96));
+    const tiles = p.plantings.reduce((n, x) => n + rectOf(x).w * rectOf(x).h, 0);
+    expect(tiles).toBe(96);
+  });
+  it('adds more big plants when only big plants are chosen', () => {
+    const p = autoPlan(bed(4, 4), ['tomato']);
+    expect(p.plantings).toHaveLength(4);
+    expect(noOverlaps(p.plantings)).toBe(true);
   });
   it('shares leftover tiles fairly', () => {
     const p = autoPlan(bed(3, 3), ['lettuce', 'carrot', 'radish']);

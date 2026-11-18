@@ -97,7 +97,8 @@ function distanceFromSun(g: Garden, x: number, y: number): number {
 }
 
 const HEIGHT_TARGET = { tall: 1, medium: 0.5, low: 0 } as const;
-const MAX_TILES_PER_PLANT = 6;
+/** First pass: share tiles evenly up to this many each, so no crop hogs a small bed. Leftovers are then shared out until the bed is full. */
+const EVEN_SHARE = 6;
 
 /** Every tile, walked from the far side to the sunny side in a back-and-forth "snake", so neighbors in the list are neighbors in the bed. */
 function snakeOrder(g: Garden): { x: number; y: number }[] {
@@ -121,7 +122,8 @@ function snakeOrder(g: Garden): { x: number; y: number }[] {
  * Lay out the chosen plants. Rules, in order:
  * 1. Big plants (tomato, squash) get their true footprint first, tall ones on the far side from the sun.
  * 2. The remaining tiles are shared out between the single-tile plants, one tile at a time
- *    in the order they were chosen, up to six tiles each.
+ *    in the order they were chosen, until every tile is used. If only big plants were chosen,
+ *    more of them are added while they fit.
  * 3. Each plant's tiles are laid as one strip, tallest plants farthest from the sun.
  * Companion planting is never used to place anything.
  */
@@ -136,6 +138,19 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
 
   // 1. Big footprints, largest first.
   const big = chosen.filter((p) => area(p) > 1).sort((a, b) => area(b) - area(a));
+  const bestBigSpot = (plant: Plant) => {
+    const [w, h] = plant.footprint;
+    let best: { x: number; y: number; score: number } | null = null;
+    for (let y = 0; y + h <= g.rows; y++) {
+      for (let x = 0; x + w <= g.cols; x++) {
+        if (!fits(g, plantings, plant.id, x, y)) continue;
+        const d = distanceFromSun(g, x + (w - 1) / 2, y + (h - 1) / 2);
+        const score = Math.abs(d - HEIGHT_TARGET[plant.height]) + (x + y * g.cols) * 0.0001;
+        if (!best || score < best.score) best = { x, y, score };
+      }
+    }
+    return best;
+  };
   for (const plant of big) {
     const [w, h] = plant.footprint;
     let best: { x: number; y: number; score: number } | null = null;
@@ -155,19 +170,35 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
     reasons[plant.id] = `${plural(plant)} get their full ${w} × ${h} ft, so they were placed first.`;
   }
 
-  // 2. Share the free tiles between the single-tile plants.
-  const free = snakeOrder(g).filter((c) => !plantingAt(plantings, c.x, c.y));
+  // Only big plants chosen: keep adding them while they fit, so the bed is not left bare.
   const small = chosen.filter((p) => area(p) === 1);
+  if (small.length === 0) {
+    let added = true;
+    while (added) {
+      added = false;
+      for (const plant of big) {
+        if (!plantings.some((p) => p.plantId === plant.id)) continue;
+        const spot = bestBigSpot(plant);
+        if (spot) { add(plant, spot.x, spot.y); added = true; }
+      }
+    }
+  }
+
+  // 2. Share the free tiles between the single-tile plants until the bed is full.
+  const free = snakeOrder(g).filter((c) => !plantingAt(plantings, c.x, c.y));
   const quota = new Map(small.map((p) => [p.id, 0]));
   let left = free.length;
   let progress = true;
-  while (left > 0 && progress) {
-    progress = false;
-    for (const plant of small) {
-      if (left === 0 || quota.get(plant.id)! >= MAX_TILES_PER_PLANT) continue;
-      quota.set(plant.id, quota.get(plant.id)! + 1);
-      left--;
-      progress = true;
+  for (const cap of [EVEN_SHARE, Infinity]) {
+    progress = true;
+    while (left > 0 && progress) {
+      progress = false;
+      for (const plant of small) {
+        if (left === 0 || quota.get(plant.id)! >= cap) continue;
+        quota.set(plant.id, quota.get(plant.id)! + 1);
+        left--;
+        progress = true;
+      }
     }
   }
 
@@ -210,7 +241,7 @@ export function starterSet(goal: 'food' | 'flowers' | 'pollinators' | 'mix', sun
     const [w, h] = getPlant(id)!.footprint;
     return w * h <= tiles / 4 && w * h <= tiles;
   });
-  const limit = tiles <= 8 ? 4 : tiles <= 16 ? 6 : 8;
+  const limit = tiles <= 8 ? 4 : tiles <= 16 ? 6 : tiles <= 40 ? 8 : 10;
   return ids.slice(0, limit);
 }
 
