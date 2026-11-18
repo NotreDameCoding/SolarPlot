@@ -64,7 +64,7 @@ export function App() {
     <SceneView
       garden={shared ? shared.garden : onboarded ? garden : null}
       plantings={shared ? shared.plantings : onboarded ? plantings : []}
-      mode={sky} today={today()} still={still} view={view}
+      mode={sky} today={today()} still={still || (onboarded && !shared && tab !== 'garden')} view={view}
     />
   );
   const broken = badLink && <p className="glass banner" role="alert">That share link is broken or out of date. <button className="link" onClick={leaveShare}>Dismiss</button></p>;

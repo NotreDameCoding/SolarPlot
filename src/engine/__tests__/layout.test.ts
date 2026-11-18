@@ -52,6 +52,7 @@ describe('spacing', () => {
   it('uses square-foot densities in raised beds', () => {
     expect(density(plantOrThrow('carrot'), 'raised')).toBe(16);
     expect(density(plantOrThrow('lettuce'), 'raised')).toBe(4);
+    expect(density(plantOrThrow('basil'), 'raised')).toBe(1);
   });
   it('goes one step sparser in the ground', () => {
     expect(density(plantOrThrow('carrot'), 'inground')).toBe(9);
@@ -117,14 +118,35 @@ describe('plan for me', () => {
     const p = autoPlan(bed(4, 6), ['pepper', 'bushbean', 'lettuce', 'carrot', 'basil', 'marigold']);
     for (const id of ['pepper', 'bushbean', 'lettuce', 'carrot', 'basil', 'marigold']) {
       const mine = p.plantings.filter((x) => x.plantId === id);
-      expect(mine.length).toBe(4);
+      expect(mine.length).toBeGreaterThanOrEqual(3);
       expect(mine.every((a) => mine.some((b) => a !== b && touches(rectOf(a), rectOf(b))))).toBe(true);
     }
   });
   it('fills the whole bed even when only a few crops are chosen', () => {
     const p = autoPlan(bed(6, 6), ['lettuce', 'carrot']);
     expect(p.plantings).toHaveLength(36);
-    expect(p.plantings.filter((x) => x.plantId === 'lettuce')).toHaveLength(18);
+    expect(p.plantings.filter((x) => x.plantId === 'carrot')).toHaveLength(3);
+  });
+  it('keeps dense crops to 3 tiles in a mixed bed', () => {
+    const p = autoPlan(bed(4, 8), starterSet('food', 'full', 32));
+    const n = (id: string) => p.plantings.filter((x) => x.plantId === id).length;
+    expect(n('carrot')).toBeLessThanOrEqual(3);
+    expect(n('radish')).toBeLessThanOrEqual(3);
+    expect(n('bushbean')).toBeLessThanOrEqual(3);
+  });
+  it('lets dense crops fill the bed when nothing else was chosen', () => {
+    expect(autoPlan(bed(3, 3), ['carrot', 'radish']).plantings).toHaveLength(9);
+  });
+  it('keeps tall plants to half the far edge so they cannot wall in a bed', () => {
+    const p = autoPlan(bed(4, 8), ['tomato', 'sunflower', 'lettuce']);
+    expect(p.plantings.filter((x) => x.plantId === 'sunflower')).toHaveLength(2);
+  });
+  it('puts big plants and tall strips at opposite ends of the far edge', () => {
+    const p = autoPlan(bed(8, 4), ['tomato', 'sunflower', 'lettuce']);
+    const tomato = p.plantings.find((x) => x.plantId === 'tomato')!;
+    const sun = p.plantings.filter((x) => x.plantId === 'sunflower');
+    expect(tomato.x).toBe(6);
+    expect(sun.every((s) => !touches(rectOf(s), rectOf(tomato)))).toBe(true);
   });
   it('fills a big bed', () => {
     const p = autoPlan(bed(12, 8), starterSet('food', 'full', 96));
@@ -204,9 +226,19 @@ describe('resizing the bed', () => {
     const p = [at('carrot', 1, 1)];
     expect(fitToBed(bed(2, 2), p)).toEqual(p);
   });
-  it('drops plants that are now outside', () => expect(fitToBed(bed(2, 2), [at('carrot', 3, 3)])).toEqual([]));
+  it('moves plants that are now outside back in when there is room', () => expect(fitToBed(bed(2, 2), [at('carrot', 3, 3)])[0]).toMatchObject({ x: 1, y: 1 }));
+  it('drops plants when the smaller bed is full', () => expect(fitToBed(bed(1, 1), [at('carrot', 0, 0), at('radish', 3, 3)])).toHaveLength(1));
   it('slides a big plant back in if the bed still has room', () => {
     expect(fitToBed(bed(3, 3), [at('tomato', 2, 2)])[0]).toMatchObject({ x: 1, y: 1 });
   });
   it('drops a big plant the bed can no longer hold', () => expect(fitToBed(bed(2, 2), [at('zucchini', 0, 0)])).toEqual([]));
+  it('never slides a plant on top of another one', () => {
+    const lettuce = at('lettuce', 1, 0);
+    expect(fitToBed(bed(3, 2), [lettuce, at('tomato', 2, 0)])).toEqual([lettuce]);
+  });
+  it('moves a cut-off plant to the nearest free spot', () => {
+    const lettuce = at('lettuce', 0, 0);
+    const out = fitToBed(bed(4, 2), [lettuce, at('tomato', 3, 0)]);
+    expect(out[1]).toMatchObject({ plantId: 'tomato', x: 2, y: 0 });
+  });
 });

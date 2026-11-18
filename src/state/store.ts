@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import {
-  autoPlan, clampToBed, fitToBed, getPlant, MAX_COLS, MAX_ROWS, plantingAt, rectOf, todayISO,
+  autoPlan, clampToBed, fitToBed, getPlant, MAX_COLS, MAX_ROWS, overlaps, rectOf, todayISO,
   type FrostInfo, type Garden, type Harvest, type ISO, type Planting, type StartMethod, type Weather,
 } from '../engine';
 
@@ -12,6 +12,8 @@ export interface Place {
   name: string;
   lat: number;
   lon: number;
+  /** Metres above sea level, from the place search; used to pick a frost station at a similar height. */
+  elev?: number;
 }
 
 export interface Settings {
@@ -44,7 +46,10 @@ interface Actions {
   updateGarden(patch: Partial<Garden>): void;
   planForMe(plantIds: string[]): string[];
   addPlanting(plantId: string, x: number, y: number): void;
-  movePlanting(id: string, x: number, y: number): void;
+  /** False when the spot is taken (only same-size plants can swap). */
+  movePlanting(id: string, x: number, y: number): boolean;
+  /** Turn the bed a quarter turn, as if you walked round to its right-hand side. */
+  rotateBed(): void;
   removePlanting(id: string): void;
   clearBed(): void;
   markPlanted(id: string, plantedOn: ISO | null, method?: StartMethod, wholeCrop?: boolean): void;
@@ -60,12 +65,15 @@ interface Actions {
   deleteEverything(): void;
 }
 
-export type State = Saved & Actions & { past: Planting[][]; future: Planting[][] };
+/** One undo step: the bed and its plants together, so undoing a resize restores the size. */
+export interface Snapshot { garden: Garden; plantings: Planting[] }
+
+export type State = Saved & Actions & { past: Snapshot[]; future: Snapshot[] };
 
 const KEY = 'solarplot:v1';
 const HISTORY_LIMIT = 50;
 
-export const DEFAULT_GARDEN: Garden = { name: 'My garden', type: 'raised', cols: 4, rows: 8, sun: 'full', sunnySide: null };
+export const DEFAULT_GARDEN: Garden = { name: 'My garden', type: 'raised', cols: 8, rows: 4, sun: 'full', sunnySide: null };
 
 const fresh = (): Saved => ({
   version: 1,
@@ -128,7 +136,7 @@ export function snapshot(s: State): Saved {
 export const useStore = create<State>()((set, get) => {
   /** Change the plantings and remember the old ones for undo. */
   const edit = (next: Planting[], extra: Partial<Saved> = {}) =>
-    set((s) => ({ plantings: next, past: [...s.past, s.plantings].slice(-HISTORY_LIMIT), future: [], ...extra }));
+    set((s) => ({ plantings: next, past: [...s.past, { garden: s.garden, plantings: s.plantings }].slice(-HISTORY_LIMIT), future: [], ...extra }));
 
   return {
     ...load(),
@@ -146,10 +154,23 @@ export const useStore = create<State>()((set, get) => {
     setWeather: (weather) => set({ weather }),
 
     updateGarden(patch) {
-      const garden = clampGarden({ ...get().garden, ...patch });
-      const kept = fitToBed(garden, get().plantings);
-      if (kept.length === get().plantings.length && kept.every((p, i) => p.x === get().plantings[i].x && p.y === get().plantings[i].y)) set({ garden });
-      else edit(kept, { garden });
+      const old = get().garden;
+      const garden = clampGarden({ ...old, ...patch });
+      // Size and type changes are undoable; renaming or changing the sun is not worth an undo step.
+      if (garden.cols !== old.cols || garden.rows !== old.rows || garden.type !== old.type) edit(fitToBed(garden, get().plantings), { garden });
+      else set({ garden });
+    },
+
+    rotateBed() {
+      const g = get().garden;
+      // You walk round to stand at the old right-hand edge: it becomes the front.
+      const turn = { right: 'front', front: 'left', back: 'right', left: 'back' } as const;
+      const garden: Garden = { ...g, cols: g.rows, rows: g.cols, sunnySide: g.sunnySide ? turn[g.sunnySide] : null };
+      const moved = get().plantings.map((p) => {
+        const r = rectOf(p);
+        return { ...p, x: g.rows - (p.y + r.h), y: p.x };
+      });
+      edit(fitToBed(garden, moved), { garden });
     },
 
     planForMe(plantIds) {
@@ -165,23 +186,29 @@ export const useStore = create<State>()((set, get) => {
       const plant = getPlant(plantId);
       if (!plant) return;
       const spot = clampToBed(s.garden, { x, y, w: plant.footprint[0], h: plant.footprint[1] });
-      // Tapping an occupied tile replaces what is there.
-      const under = plantingAt(s.plantings, x, y);
-      const rest = under ? s.plantings.filter((p) => p.id !== under.id) : s.plantings;
+      // Placing a plant replaces everything under its whole footprint (Undo brings them back), so plants never overlap.
+      const area = { ...spot, w: plant.footprint[0], h: plant.footprint[1] };
+      const rest = s.plantings.filter((p) => !overlaps(area, rectOf(p)));
       edit([...rest, { id: `p${s.nextId}`, plantId, ...spot }], { nextId: s.nextId + 1 });
     },
 
     movePlanting(id, x, y) {
       const s = get();
       const moving = s.plantings.find((p) => p.id === id);
-      if (!moving) return;
+      if (!moving) return false;
       const from = rectOf(moving);
       const to = clampToBed(s.garden, { ...from, x, y });
-      if (to.x === moving.x && to.y === moving.y) return;
+      if (to.x === moving.x && to.y === moving.y) return true;
       // Dropping onto a plant with the same footprint swaps the two.
       const target = s.plantings.find((p) => p.id !== id && p.x === to.x && p.y === to.y);
       const swap = target && rectOf(target).w === from.w && rectOf(target).h === from.h;
+      if (!swap) {
+        // Refuse a move that would land on other plants (anything except a same-size swap).
+        const dest = { ...from, ...to };
+        if (s.plantings.some((p) => p.id !== id && overlaps(dest, rectOf(p)))) return false;
+      }
       edit(s.plantings.map((p) => (p.id === id ? { ...p, ...to } : swap && p.id === target.id ? { ...p, x: moving.x, y: moving.y } : p)));
+      return true;
     },
 
     removePlanting: (id) => edit(get().plantings.filter((p) => p.id !== id)),
@@ -203,8 +230,8 @@ export const useStore = create<State>()((set, get) => {
       if (first) get().markPlanted(first.id, plantedOn, undefined, true);
     },
 
-    undo: () => set((s) => (s.past.length ? { plantings: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.plantings, ...s.future] } : {})),
-    redo: () => set((s) => (s.future.length ? { plantings: s.future[0], future: s.future.slice(1), past: [...s.past, s.plantings] } : {})),
+    undo: () => set((s) => (s.past.length ? { ...s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [{ garden: s.garden, plantings: s.plantings }, ...s.future] } : {})),
+    redo: () => set((s) => (s.future.length ? { ...s.future[0], future: s.future.slice(1), past: [...s.past, { garden: s.garden, plantings: s.plantings }] } : {})),
 
     addHarvest: (h) => set((s) => ({ harvests: [...s.harvests, { ...h, id: `h${s.nextId}` }], nextId: s.nextId + 1 })),
     removeHarvest: (id) => set((s) => ({ harvests: s.harvests.filter((h) => h.id !== id) })),

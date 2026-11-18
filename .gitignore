@@ -4,3 +4,5 @@ dist
 .DS_Store
 .env
 .env.*
+# Built from NOAA data by `npm run frost-data` (the deploy workflow runs it)
+public/frost-stations.json

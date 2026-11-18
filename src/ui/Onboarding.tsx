@@ -44,7 +44,7 @@ export function Onboarding({ onDone }: { onDone: (notes: string[]) => void }) {
       {step === 1 && (
         <section>
           <h1>Tell me about your bed</h1>
-          <p>One tile is one square foot. You can change all of this later.</p>
+          <p>One tile is one square foot. Width is the side you stand at. You can change all of this later.</p>
           <Segmented label="Garden type" value={garden.type} onChange={(type) => patch({ type })} options={[{ value: 'raised', label: 'Raised bed' }, { value: 'inground', label: 'In the ground' }]} />
           <Stepper label="Width" unit="ft" value={garden.cols} min={1} max={MAX_COLS} onChange={(cols) => patch({ cols })} />
           <Stepper label="Depth" unit="ft" value={garden.rows} min={1} max={MAX_ROWS} onChange={(rows) => patch({ rows })} />

@@ -71,9 +71,11 @@ describe('hints and warnings', () => {
     expect(texts(checkGarden(g, [at('sunflower', 0, 0), at('pepper', 1, 0)]), 'caution')).toHaveLength(1);
     expect(texts(checkGarden(g, [at('sunflower', 1, 0), at('pepper', 0, 0)]), 'caution')).toHaveLength(0);
   });
-  it('does not guess about shade when the sunny side is unmarked', () => {
+  it('assumes the front is sunny when the sunny side is unmarked, and says so', () => {
     const g = bed(4, 4, { sunnySide: null });
-    expect(texts(checkGarden(g, [at('sunflower', 0, 1), at('pepper', 0, 0)]), 'caution')).toEqual([]);
+    const issues = checkGarden(g, [at('sunflower', 0, 1), at('pepper', 0, 0)]).filter((i) => i.level === 'caution');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].fix).toContain('Mark the sunny side');
   });
   it('does not mind shade on plants that tolerate it', () => {
     expect(texts(checkGarden(bed(), [at('sunflower', 0, 1), at('lettuce', 0, 0)]), 'caution')).toEqual([]);

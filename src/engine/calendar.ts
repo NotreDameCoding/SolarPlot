@@ -35,6 +35,17 @@ export const SPRING_OFFSETS = {
   veryTender: { from: 'late', start: 14, end: 21 },
 } as const;
 
+/** How long after the average first fall frost each class keeps producing (hardy crops shrug off light frosts). */
+const FROST_HARVEST_GRACE = { veryTender: 0, tender: 0, semiHardy: 14, hardy: 35 } as const;
+
+/** Stop a spring harvest at the first fall frost, so tender crops never "harvest" into November. */
+function capAtFrost(plant: Plant, frost: FrostInfo, year: number, harvest: DateWindow): DateWindow {
+  if (!frost.firstFall || plant.perennial) return harvest;
+  const cap = addDays(fromDayOfYear(year, frost.firstFall.median), FROST_HARVEST_GRACE[plant.frost]);
+  const end = harvest.end < cap ? harvest.end : cap;
+  return { start: harvest.start, end: end < harvest.start ? harvest.start : end };
+}
+
 /** Days from going outside to first harvest, for the chosen way of starting. */
 export function effectiveDtm(plant: Plant, method: StartMethod): number {
   const indoorDays = (plant.indoorWeeks ?? 0) * 7;
@@ -103,7 +114,7 @@ export function springCalendar(plant: Plant, frost: FrostInfo, year: number, met
 
   return {
     plantId: plant.id, season: 'spring', method, startIndoors: indoorWindow(plant, method, plantOut), plantOut, lastChance,
-    harvest: { start: addDays(plantOut.start, dtm), end: addDays(plantOut.end, dtm + plant.harvestDays) },
+    harvest: capAtFrost(plant, frost, year, { start: addDays(plantOut.start, dtm), end: addDays(plantOut.end, dtm + plant.harvestDays) }),
     why, notes,
   };
 }

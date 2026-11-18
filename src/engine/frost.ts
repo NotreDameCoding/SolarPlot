@@ -22,7 +22,58 @@ export interface FrostInfo {
   years: number;
   /** USDA-style hardiness zone such as '6b', worked out from the coldest night of each year. */
   zone: string | null;
-  source: 'history' | 'manual';
+  /** 'noaa' = official station normals; 'history' = estimated from Open-Meteo records; 'manual' = typed in. */
+  source: 'noaa' | 'history' | 'manual';
+  /** For NOAA data: which weather station, and how far away it is. */
+  station?: string;
+  stationKm?: number;
+}
+
+/**
+ * One row of public/frost-stations.json (see scripts/frost-data.mjs):
+ * id, name, lat, lon, elevation (m), last spring 10/50/90%, first fall 10/50/90% (day of year),
+ * frost-free flag, warm-climate zone.
+ */
+export type StationRow = [string, string, number, number, number | null, number | null, number | null, number | null, number | null, number | null, number | null, 0 | 1, string | null];
+
+/** Kilometres between two points. */
+export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const r = Math.PI / 180;
+  const a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * The station that best represents a garden: the nearest one, where every 100 m of height
+ * difference counts like 10 km of distance (frost depends a lot on elevation).
+ * Returns null if nothing is within maxKm.
+ */
+export function nearestStation(rows: StationRow[], lat: number, lon: number, elevM: number | null = null, maxKm = 80): { row: StationRow; km: number } | null {
+  let best: { row: StationRow; km: number; score: number } | null = null;
+  for (const row of rows) {
+    const km = distanceKm(lat, lon, row[2], row[3]);
+    if (km > maxKm) continue;
+    const score = km + (elevM !== null && row[4] !== null ? Math.abs(elevM - row[4]) / 10 : 0);
+    if (!best || score < best.score) best = { row, km, score };
+  }
+  return best && { row: best.row, km: best.km };
+}
+
+/** Turn a NOAA station row into frost windows. NOAA's 90% last-frost date is our 1-in-10-risk date. */
+export function frostFromStation(row: StationRow, km: number): FrostInfo {
+  const [, name, , , , l10, l50, l90, f10, f50, f90, frostFree, zone] = row;
+  const win = (a: number | null, b: number | null, c: number | null): FrostWindow | null => (a !== null && b !== null && c !== null ? { early: a, median: b, late: c } : null);
+  const free = frostFree === 1;
+  return {
+    lastSpring: free ? null : win(l10, l50, l90),
+    firstFall: free ? null : win(f10, f50, f90),
+    frostFree: free,
+    years: 30,
+    zone,
+    source: 'noaa',
+    station: name,
+    stationKm: Math.round(km),
+  };
 }
 
 export interface DailyMin {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getPlant, PLANTS, plantOrThrow, plural } from '../plants';
 
-const SPRITES = ['sun', 'tom', 'bean', 'pep', 'bas', 'kal', 'zin', 'mar', 'let', 'letr', 'car', 'oni', 'str', 'spi', 'rad', 'squ', 'cab', 'gar', 'corn'];
+const SPRITES = ['sun', 'tom', 'bean', 'pep', 'bas', 'kal', 'zin', 'mar', 'let', 'letr', 'car', 'oni', 'str', 'spi', 'rad', 'squ', 'cab', 'gar', 'corn', 'bbn', 'pot', 'par', 'cil', 'min', 'ore', 'ros', 'sag'];
 const ids = new Set(PLANTS.map((p) => p.id));
 
 describe('plant database', () => {
@@ -24,6 +24,9 @@ describe('plant database', () => {
   });
   it('gives every plant a sprite the scene can draw', () => {
     expect(PLANTS.filter((p) => !SPRITES.includes(p.sprite)).map((p) => p.id)).toEqual([]);
+  });
+  it('gives basil its own picture, not shared with eight other plants', () => {
+    expect(PLANTS.filter((p) => p.sprite === 'bas').map((p) => p.id)).toEqual(['basil']);
   });
   it('uses real square-foot densities', () => {
     expect(PLANTS.filter((p) => ![1, 2, 4, 8, 9, 16].includes(p.perSqFt)).map((p) => p.id)).toEqual([]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeFrost, frostFreeDays, frostFromHistory, frostFromManual, quantile, safeDate, zoneFromMinF, zoneNumber } from '../frost';
+import { describeFrost, distanceKm, frostFreeDays, frostFromHistory, frostFromManual, frostFromStation, nearestStation, quantile, safeDate, zoneFromMinF, zoneNumber, type StationRow } from '../frost';
 import { HOUSTON, OHIO, yearOfLows } from './helpers';
 
 // Ten years where the last frost falls between day 100 and day 118, first frost 280-298.
@@ -87,4 +87,32 @@ describe('frost dates typed in by hand', () => {
     expect(describeFrost(OHIO, 2027)).toBe('Last spring frost usually between Apr 6 and May 4. First fall frost usually between Oct 1 and Oct 29.');
   });
   it('treats a long southern season as long', () => expect(frostFreeDays(HOUSTON)).toBe(298));
+});
+
+describe('NOAA station frost dates', () => {
+  const boise: StationRow = ['USW00024131', 'BOISE AIR TERMINAL', 43.567, -116.241, 874, 108, 123, 140, 266, 281, 296, 0, null];
+  const hill: StationRow = ['USC00000001', 'HIGH RIDGE', 43.6, -116.2, 1500, 130, 145, 160, 250, 262, 275, 0, null];
+  const miami: StationRow = ['USW00012839', 'MIAMI INTL AP', 25.788, -80.317, 9, null, null, null, null, null, null, 1, '10b'];
+  it('measures distance on the globe', () => expect(Math.round(distanceKm(43.6, -116.2, 43.6, -115.2))).toBe(81));
+  it('picks the nearest station', () => {
+    expect(nearestStation([boise, miami], 43.6, -116.25)!.row[0]).toBe('USW00024131');
+  });
+  it('prefers a station at a similar height over a slightly closer one', () => {
+    // The ridge station is closer to this point, but 600 m higher than the garden.
+    expect(nearestStation([boise, hill], 43.595, -116.205, 880)!.row[1]).toBe('BOISE AIR TERMINAL');
+  });
+  it('finds nothing when every station is far away', () => expect(nearestStation([miami], 43.6, -116.2)).toBeNull());
+  it("maps NOAA's 90% last-frost date to the 1-in-10-risk date", () => {
+    const f = frostFromStation(boise, 4);
+    expect(f.lastSpring).toEqual({ early: 108, median: 123, late: 140 });
+    expect(f.firstFall).toEqual({ early: 266, median: 281, late: 296 });
+    expect(f).toMatchObject({ source: 'noaa', station: 'BOISE AIR TERMINAL', stationKm: 4, years: 30 });
+    expect(safeDate(f, 2027)).toBe('2027-05-20');
+  });
+  it('treats a frost-free station as frost-free', () => {
+    const f = frostFromStation(miami, 3);
+    expect(f.frostFree).toBe(true);
+    expect(f.lastSpring).toBeNull();
+    expect(f.zone).toBe('10b');
+  });
 });

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "frost-data": "node scripts/frost-data.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

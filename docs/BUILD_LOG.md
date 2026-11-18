@@ -37,3 +37,24 @@ The product idea, feature decisions, art direction and approval of the scene are
 - Newly planted crops show as seedlings (a sprout for seeds, a few true leaves for transplants) and switch to the grown plant once about a third of the way to harvest. Transplants now start at 10% grown instead of 25%.
 - One-tap planting: "Planted today" for each crop in the Plan tab's crop list, and "I planted it today" on This week tasks. Tapping a crop in the bed still lets you pick a different date.
 - "Plan for me" now fills every tile: crops first share tiles evenly (up to 6 each), then the rest is shared out until the bed is full. If only big plants are chosen, more of them are added while they fit. Beds over 40 sq ft get up to 10 crops in the starter set.
+
+## 2026-11-17: fixes from the second review
+
+**Gardening**
+- Frost dates now come from NOAA's official 1991-2020 normals for the nearest weather station (elevation-aware), built into the site by `scripts/frost-data.mjs` at deploy time. The old Open-Meteo estimate (10 years of gridded data) ran about a week early in Boise and used ~260 API calls per search; it is now only a fallback, labelled as an estimate. The script stops without writing anything if NOAA's files fail sanity checks (Boise, Fairbanks, Miami, Chicago).
+- Spring harvests stop at the first fall frost (tender crops) or a few weeks after (semi-hardy and hardy).
+- Basil and dill are 1 per sq ft (were 4).
+- Plan for me: dense crops (9+ per sq ft) stop at 3 tiles in a mixed bed, tall single-tile plants take at most half the far edge, and big plants go to the opposite end of the far edge from the tall strip.
+- The shade check now assumes the front is sunny when no sunny side is marked (as Plan for me does) and says so.
+
+**Bugs**
+- Undo steps now include the bed size, so undoing a resize restores it.
+- Placing a big plant replaces everything under its footprint; moving onto occupied ground is refused (same-size swaps still work); shrinking a bed moves cut-off plants to the nearest free spot instead of on top of neighbours.
+
+**Phones**
+- The scene only animates on the Garden tab (other tabs get one still frame) and runs at most 30 frames a second.
+
+**Art**
+- New beds default to 8 ft wide by 4 ft deep (long side facing you), and Edit bed has "Turn bed a quarter turn".
+- Snow keeps your crops: winter versions where they exist, otherwise your own plant dusted with snow.
+- Bush bean, potato, parsley, cilantro, mint, oregano, rosemary and sage have their own pictures instead of sharing basil's.

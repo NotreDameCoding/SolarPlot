@@ -8,6 +8,7 @@ A free, phone-first garden planner for beginners in the US. It tells you what to
 npm install
 npm run dev      # open the address it prints
 npm test         # planting-engine tests
+npm run frost-data   # optional locally: download NOAA frost dates (needs internet)
 npm run build    # static site in dist/, ready for Netlify, Cloudflare Pages or GitHub Pages
 ```
 
@@ -28,7 +29,7 @@ Google sign-in and Supabase, email and push alerts, container gardens, the "Noti
 ## Things to know
 
 - **Plant data is a first draft** and has not been reviewed by a Master Gardener. See `src/engine/plants.ts`.
-- **Frost dates are estimated** from 10 years of Open-Meteo temperature records, not the NOAA/NCEI tables the blueprint calls for.
+- **Frost dates come from NOAA** 1991–2020 climate normals for the nearest weather station. `npm run frost-data` builds `public/frost-stations.json` (the deploy workflow does this automatically). Without that file the app falls back to estimating from 10 years of Open-Meteo records, which runs early and costs about 260 Open-Meteo calls per lookup.
 - **Open-Meteo is free for non-commercial use only**, so the app must stay free while it uses it.
 - Several plants borrow a look-alike sprite (for example, cucumbers use the bean trellis) until they get their own art.
 

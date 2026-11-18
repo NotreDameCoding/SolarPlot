@@ -26,6 +26,9 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm test
+      # Official NOAA frost dates. If NOAA is unreachable the app falls back to estimates.
+      - run: npm run frost-data
+        continue-on-error: true
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

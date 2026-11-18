@@ -59,6 +59,25 @@ describe('spring planting windows (last frost Apr 20, 10%-risk date May 4)', () 
   });
 });
 
+describe('harvests and fall frost', () => {
+  it('stops a tender harvest at the first fall frost', () => {
+    // Montana: first frost Sep 5. Tomatoes could otherwise "harvest" into November.
+    expect(spring('tomato', MONTANA).harvest.end).toBe('2027-09-05');
+  });
+  it('gives frost-hardy crops a few extra weeks past first frost', () => {
+    expect(spring('kale', MONTANA).harvest.end <= '2027-10-10').toBe(true);
+  });
+  it('leaves harvests that end before frost alone', () => {
+    expect(spring('radish').harvest.end).toBe('2027-04-30');
+  });
+  it('never ends a harvest before it starts', () => {
+    for (const p of PLANTS.filter((x) => !x.overwinter)) {
+      const c = spring(p.id, MONTANA);
+      expect(c.harvest.end >= c.harvest.start).toBe(true);
+    }
+  });
+});
+
 describe('days to maturity', () => {
   it('uses the packet number when the method matches', () => expect(effectiveDtm(P('tomato'), 'transplant')).toBe(75));
   it('subtracts indoor time when a seed-counted crop goes in as a seedling', () => {

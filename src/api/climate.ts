@@ -1,4 +1,4 @@
-import { addDays, frostFromHistory, parseNws, parseOpenMeteo, type DailyMin, type FrostInfo, type ISO, type Weather } from '../engine';
+import { addDays, frostFromHistory, frostFromStation, nearestStation, parseNws, parseOpenMeteo, type DailyMin, type FrostInfo, type ISO, type StationRow, type Weather } from '../engine';
 import type { Place } from '../state/store';
 
 /**
@@ -28,6 +28,7 @@ interface GeoResult {
   name: string;
   latitude: number;
   longitude: number;
+  elevation?: number;
   admin1?: string;
   country_code?: string;
 }
@@ -44,11 +45,34 @@ export async function searchPlaces(query: string): Promise<Place[]> {
       // Rounded to about half a mile: plenty for weather, and no more precise than a ZIP code.
       lat: Math.round(r.latitude * 100) / 100,
       lon: Math.round(r.longitude * 100) / 100,
+      elev: typeof r.elevation === 'number' ? Math.round(r.elevation) : undefined,
     }));
 }
 
-/** Ten full years of daily lows, turned into frost windows and a hardiness zone. */
+let stations: Promise<StationRow[] | null> | null = null;
+
+/** NOAA frost dates for ~thousands of US weather stations, shipped with the site (scripts/frost-data.mjs). */
+function loadStations(): Promise<StationRow[] | null> {
+  stations ??= fetch(new URL('frost-stations.json', document.baseURI).href)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d: { stations?: StationRow[] } | null) => (Array.isArray(d?.stations) ? d!.stations : null))
+    .catch(() => null);
+  return stations;
+}
+
+/**
+ * Frost dates for a garden. First choice: NOAA's official 1991-2020 normals from the nearest
+ * weather station (no API calls). Fallback: estimate from ten years of Open-Meteo daily lows,
+ * which costs about 260 of Open-Meteo's free calls per lookup.
+ */
 export async function fetchFrost(place: Place, today: ISO): Promise<FrostInfo | null> {
+  const rows = await loadStations();
+  const near = rows ? nearestStation(rows, place.lat, place.lon, place.elev ?? null) : null;
+  if (near) return frostFromStation(near.row, near.km);
+  return estimateFrost(place, today);
+}
+
+async function estimateFrost(place: Place, today: ISO): Promise<FrostInfo | null> {
   const lastYear = Number(today.slice(0, 4)) - 1;
   const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${place.lat}&longitude=${place.lon}&start_date=${lastYear - 9}-01-01&end_date=${lastYear}-12-31&daily=temperature_2m_min&temperature_unit=fahrenheit&timezone=auto`;
   const json = (await getJson(url, 25000)) as { daily?: { time?: string[]; temperature_2m_min?: (number | null)[] } } | null;

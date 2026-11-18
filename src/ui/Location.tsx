@@ -66,6 +66,9 @@ export function ManualFrost({ frost, onChange }: { frost: FrostInfo | null; onCh
   );
 }
 
+/** 'BOISE AIR TERMINAL, ID US' -> 'Boise Air Terminal, ID' */
+const titleCase = (s: string) => s.replace(/ US$/, '').toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()).replace(/, ([A-Za-z]{2})$/, (_, st: string) => `, ${st.toUpperCase()}`);
+
 export function FrostSummary({ place, frost }: { place: Place | null; frost: FrostInfo | null }) {
   const year = Number(today().slice(0, 4));
   if (!frost) return <p className="note">{place ? `${place.name}: frost dates not set yet.` : 'No location yet, so the calendar cannot work out dates.'}</p>;
@@ -74,7 +77,9 @@ export function FrostSummary({ place, frost }: { place: Place | null; frost: Fro
       {place && <strong>{place.name}. </strong>}
       {describeFrost(frost, year)}
       {frost.zone && ` Hardiness zone ${frost.zone}.`}
-      <span className="note"> {frost.source === 'history' ? `Worked out from ${frost.years} years of temperature records (Open-Meteo), so treat it as an estimate.` : 'From the dates you entered.'}</span>
+      <span className="note"> {frost.source === 'noaa'
+        ? `Official NOAA 1991–2020 frost records from ${titleCase(frost.station ?? 'the nearest station')}, ${frost.stationKm} km away.`
+        : frost.source === 'history' ? `Estimated from ${frost.years} years of Open-Meteo temperature records, which can run early. Check it against your county extension office, or enter dates by hand.` : 'From the dates you entered.'}</span>
     </p>
   );
 }

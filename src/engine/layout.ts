@@ -99,6 +99,8 @@ function distanceFromSun(g: Garden, x: number, y: number): number {
 const HEIGHT_TARGET = { tall: 1, medium: 0.5, low: 0 } as const;
 /** First pass: share tiles evenly up to this many each, so no crop hogs a small bed. Leftovers are then shared out until the bed is full. */
 const EVEN_SHARE = 6;
+/** Dense crops (9+ per sq ft: carrots, radishes, beans, spinach) stop at 3 tiles, so a bed isn't 64 carrots and one tomato. */
+const DENSE_CAP = 3;
 
 /** Every tile, walked from the far side to the sunny side in a back-and-forth "snake", so neighbors in the list are neighbors in the bed. */
 function snakeOrder(g: Garden): { x: number; y: number }[] {
@@ -136,6 +138,8 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
   let n = 0;
   const add = (plant: Plant, x: number, y: number) => plantings.push({ id: `p${++n}`, plantId: plant.id, x, y });
 
+  const order = new Map(snakeOrder(g).map((c, i) => [`${c.x},${c.y}`, i]));
+
   // 1. Big footprints, largest first.
   const big = chosen.filter((p) => area(p) > 1).sort((a, b) => area(b) - area(a));
   const bestBigSpot = (plant: Plant) => {
@@ -145,7 +149,7 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
       for (let x = 0; x + w <= g.cols; x++) {
         if (!fits(g, plantings, plant.id, x, y)) continue;
         const d = distanceFromSun(g, x + (w - 1) / 2, y + (h - 1) / 2);
-        const score = Math.abs(d - HEIGHT_TARGET[plant.height]) + (x + y * g.cols) * 0.0001;
+        const score = Math.abs(d - HEIGHT_TARGET[plant.height]) - (order.get(`${x},${y}`) ?? 0) * 0.0001;
         if (!best || score < best.score) best = { x, y, score };
       }
     }
@@ -158,7 +162,7 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
       for (let x = 0; x + w <= g.cols; x++) {
         if (!fits(g, plantings, plant.id, x, y)) continue;
         const d = distanceFromSun(g, x + (w - 1) / 2, y + (h - 1) / 2);
-        const score = Math.abs(d - HEIGHT_TARGET[plant.height]) + (x + y * g.cols) * 0.0001; // tie-break: back-left first
+        const score = Math.abs(d - HEIGHT_TARGET[plant.height]) - (order.get(`${x},${y}`) ?? 0) * 0.0001; // tie-break: far end of the first strip
         if (!best || score < best.score) best = { x, y, score };
       }
     }
@@ -187,6 +191,12 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
   // 2. Share the free tiles between the single-tile plants until the bed is full.
   const free = snakeOrder(g).filter((c) => !plantingAt(plantings, c.x, c.y));
   const quota = new Map(small.map((p) => [p.id, 0]));
+  // Caps keep the mix balanced, unless every chosen crop is of that kind (then they must fill the bed).
+  const allDense = small.every((p) => p.perSqFt >= 9);
+  const allTall = small.every((p) => p.height === 'tall');
+  const edge = g.sunnySide === 'left' || g.sunnySide === 'right' ? g.rows : g.cols;
+  const capOf = (p: Plant) =>
+    p.height === 'tall' && !allTall ? Math.max(1, Math.floor(edge / 2)) : p.perSqFt >= 9 && !allDense ? DENSE_CAP : Infinity;
   let left = free.length;
   let progress = true;
   for (const cap of [EVEN_SHARE, Infinity]) {
@@ -194,7 +204,7 @@ export function autoPlan(g: Garden, plantIds: string[]): AutoPlan {
     while (left > 0 && progress) {
       progress = false;
       for (const plant of small) {
-        if (left === 0 || quota.get(plant.id)! >= cap) continue;
+        if (left === 0 || quota.get(plant.id)! >= Math.min(cap, capOf(plant))) continue;
         quota.set(plant.id, quota.get(plant.id)! + 1);
         left--;
         progress = true;
@@ -318,8 +328,9 @@ export function checkGarden(g: Garden, plantings: Planting[], frost?: FrostInfo 
   }
 
   // Shading: a tall plant with a shorter sun-lover directly on its shady side.
-  if (g.sunnySide) {
-    const [dx, dy] = { front: [0, -1], back: [0, 1], left: [1, 0], right: [-1, 0] }[g.sunnySide];
+  {
+    const assumed = g.sunnySide === null;
+    const [dx, dy] = { front: [0, -1], back: [0, 1], left: [1, 0], right: [-1, 0] }[g.sunnySide ?? 'front'];
     const seen = new Set<string>();
     for (const tall of known) {
       if (plantOf(tall).height !== 'tall') continue;
@@ -332,7 +343,7 @@ export function checkGarden(g: Garden, plantings: Planting[], frost?: FrostInfo 
         const key = `${tall.plantId}>${other.plantId}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        issues.push({ level: 'caution', plantingIds: [tall.id, other.id], text: `${plantOf(tall).name} will shade the ${o.name.toLowerCase()} behind it for part of the day.`, fix: 'Put tall plants on the side of the bed away from the sun.' });
+        issues.push({ level: 'caution', plantingIds: [tall.id, other.id], text: `${plantOf(tall).name} will shade the ${o.name.toLowerCase()} behind it for part of the day.`, fix: assumed ? 'This assumes the front of the bed gets the sun. Mark the sunny side in Edit bed to check properly.' : 'Put tall plants on the side of the bed away from the sun.' });
       }
     }
   }
@@ -373,12 +384,33 @@ export function worstLevels(issues: Issue[]): Map<string, IssueLevel> {
   return out;
 }
 
-/** Drop or slide plantings so they fit a resized bed. */
+/**
+ * Make plantings fit a resized bed. Plants still inside stay put. A plant cut off by the new edge
+ * moves to the nearest free spot that fits (never on top of another plant); if there is none, it is
+ * left out (Undo brings it back).
+ */
 export function fitToBed(g: Garden, plantings: Planting[]): Planting[] {
-  return plantings
-    .filter((p) => {
-      const r = rectOf(p);
-      return r.w <= g.cols && r.h <= g.rows && r.x < g.cols && r.y < g.rows;
-    })
-    .map((p) => ({ ...p, ...clampToBed(g, rectOf(p)) }));
+  const kept: Planting[] = [];
+  const homeless: Planting[] = [];
+  for (const p of plantings) {
+    const r = rectOf(p);
+    if (r.w > g.cols || r.h > g.rows) continue;
+    if (inBounds(g, r) && !kept.some((k) => overlaps(r, rectOf(k)))) kept.push(p);
+    else homeless.push(p);
+  }
+  for (const p of homeless) {
+    const r = rectOf(p);
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let y = 0; y + r.h <= g.rows; y++) {
+      for (let x = 0; x + r.w <= g.cols; x++) {
+        if (kept.some((k) => overlaps({ x, y, w: r.w, h: r.h }, rectOf(k)))) continue;
+        const d = Math.abs(x - p.x) + Math.abs(y - p.y);
+        if (!best || d < best.d) best = { x, y, d };
+      }
+    }
+    if (best) kept.push({ ...p, x: best.x, y: best.y });
+  }
+  // Keep the original order so the planner draws them the same way.
+  const order = new Map(plantings.map((p, i) => [p.id, i]));
+  return kept.sort((a, b) => order.get(a.id)! - order.get(b.id)!);
 }

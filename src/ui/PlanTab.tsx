@@ -41,7 +41,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
 
   const tapTile = (x: number, y: number) => {
     if (justDragged.current) { justDragged.current = false; return; }
-    if (moving) { movePlanting(moving, x, y); setMoving(null); return; }
+    if (moving) { if (!movePlanting(moving, x, y)) setNotes(['No room there: that spot is taken. Move or remove the plant that is there first.']); setMoving(null); return; }
     if (armed) { addPlanting(armed, x, y); return; }
     const hit = plantingAt(plantings, x, y);
     if (hit) setSelected(hit.id);
@@ -72,7 +72,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
     const d = dragStart.current;
     dragStart.current = null;
     if (d?.active && drag) {
-      movePlanting(drag.id, drag.x, drag.y);
+      if (!movePlanting(drag.id, drag.x, drag.y)) setNotes(['No room there: that spot is taken. Move or remove the plant that is there first.']);
       justDragged.current = true;
     }
     setDrag(null);
@@ -228,7 +228,8 @@ function BedSheet({ onClose }: { onClose: () => void }) {
       <Segmented label="Garden type" value={garden.type} onChange={(type) => update({ type })} options={[{ value: 'raised', label: 'Raised bed' }, { value: 'inground', label: 'In the ground' }]} />
       <Stepper label="Width" unit="ft" value={garden.cols} min={1} max={MAX_COLS} onChange={(cols) => update({ cols })} />
       <Stepper label="Depth" unit="ft" value={garden.rows} min={1} max={MAX_ROWS} onChange={(rows) => update({ rows })} />
-      <p className="note">Shrinking the bed removes plants that no longer fit. Undo brings them back. In-ground beds are spaced one step wider than raised beds.</p>
+      <p className="note">Width is the side facing you. Shrinking the bed removes plants that no longer fit; Undo brings them back. In-ground beds are spaced one step wider than raised beds.</p>
+      <button className="btn" onClick={() => useStore.getState().rotateBed()}>Turn bed a quarter turn</button>
       <h3>Sun</h3>
       <Segmented label="Sun" value={garden.sun} onChange={(sun) => update({ sun })} options={[{ value: 'full', label: '6+ hours' }, { value: 'part', label: '3–6 hours' }, { value: 'shade', label: 'Under 3' }]} />
       <p className="note">{SUN_LABEL[garden.sun]}. Most people overestimate.</p>
