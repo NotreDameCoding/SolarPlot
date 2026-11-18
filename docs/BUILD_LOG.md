@@ -32,7 +32,7 @@ The product idea, feature decisions, art direction and approval of the scene are
 
 ## 2026-11-17: planting and visibility fixes
 
-- Tab switches cut straight to the new view instead of panning.
+- The camera stays on the garden on every tab (no per-tab views, no pans).
 - The scene sizes the bed to fit the screen width, so wide beds are fully visible on phones.
 - Newly planted crops show as seedlings (a sprout for seeds, a few true leaves for transplants) and switch to the grown plant once about a third of the way to harvest. Transplants now start at 10% grown instead of 25%.
 - One-tap planting: "Planted today" for each crop in the Plan tab's crop list, and "I planted it today" on This week tasks. Tapping a crop in the bed still lets you pick a different date.

@@ -14,12 +14,12 @@ import { useWeather } from './ui/useWeather';
 import type { SceneViewName } from './scene/scene.js';
 
 type Tab = 'garden' | 'plan' | 'calendar' | 'harvest' | 'more';
-const TABS: { id: Tab; label: string; view: SceneViewName }[] = [
-  { id: 'garden', label: 'Garden', view: 'garden' },
-  { id: 'plan', label: 'Plan', view: 'meadow' },
-  { id: 'calendar', label: 'Calendar', view: 'sky' },
-  { id: 'harvest', label: 'Harvest', view: 'cottage' },
-  { id: 'more', label: 'More', view: 'river' },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'garden', label: 'Garden' },
+  { id: 'plan', label: 'Plan' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'harvest', label: 'Harvest' },
+  { id: 'more', label: 'More' },
 ];
 
 const readShare = (): SharedGarden | null => (location.hash.startsWith('#g=') ? decodeShare(location.hash.slice(3)) : null);
@@ -58,7 +58,8 @@ export function App() {
   };
   const go = (t: Tab) => { setTab(t); window.scrollTo(0, 0); };
 
-  const view: SceneViewName = shared ? 'garden' : !onboarded ? 'wide' : TABS.find((t) => t.id === tab)!.view;
+  // The camera never moves between tabs: every tab looks at the same garden.
+  const view: SceneViewName = onboarded || shared ? 'garden' : 'wide';
   const backdrop = (
     <SceneView
       garden={shared ? shared.garden : onboarded ? garden : null}
