@@ -19,3 +19,13 @@ The product idea, feature decisions, art direction and approval of the scene are
 - Run `npm install`, `npm test`, `npm run dev` and fix anything the real toolchain flags.
 - Master Gardener review of `plants.ts`.
 - Test on a real phone.
+
+## 2026-11-17: redesign around the living scene
+
+**Feedback:** the interface felt plain next to the garden, and plants were drawn wrong in the scene (giant on small beds, river showing through stems at night).
+
+**Changes**
+- Scene fixes: plants, stake lights and grass are now drawn back to front in one pass; night/rain/snow tinting is baked into each sprite instead of masking the whole frame (that mask erased plant pixels that rose above the hills); small beds no longer enlarge plants past concept-art size.
+- The painted world now fills the screen behind every tab, with a different camera view per tab (garden, meadow with turbines, sky, cottage, river) and a slow pan between them. The world was extended downward (more meadow) so the camera can frame the bed above the cards on phones.
+- Interface rebuilt as "storybook glass" after Apple's Liquid Glass guidance (controls float on a glass layer over edge-to-edge content): grainy translucent cards, a floating tab bar, a painted wooden bed in the planner, and colors that follow the sky (golden by day, grey in rain, pale in snow, dusky at night). The separate light/dark theme setting was removed because the sky now decides.
+- Wide screens put the Garden tab's cards in a right-hand column so the bed stays in view.

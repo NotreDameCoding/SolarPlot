@@ -83,30 +83,31 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
 
   return (
     <div className="plan">
-      <div className="card bed-head">
-        <div>
-          <h1>{garden.name}</h1>
-          <p className="note">{garden.cols} × {garden.rows} ft {garden.type === 'raised' ? 'raised bed' : 'in-ground bed'} · {sunWord}</p>
+      <div className="glass card bed-card">
+        <div className="bed-head">
+          <div>
+            <h1>{garden.name}</h1>
+            <p className="note">{garden.cols} × {garden.rows} ft {garden.type === 'raised' ? 'raised bed' : 'in-ground bed'} · {sunWord}</p>
+          </div>
+          <button className="btn" onClick={() => setSheet('bed')}>Edit bed</button>
         </div>
-        <button className="btn" onClick={() => setSheet('bed')}>Edit bed</button>
-      </div>
-
-      <div className="toolbar">
-        <button className="btn" onClick={undo} disabled={!canUndo}>Undo</button>
-        <button className="btn" onClick={redo} disabled={!canRedo}>Redo</button>
-        <button className="btn" onClick={() => setSheet('auto')}>Plan for me</button>
-        <button className="btn btn--quiet" onClick={clearBed} disabled={plantings.length === 0}>Clear</button>
+        <div className="toolbar">
+          <button className="btn btn--small" onClick={undo} disabled={!canUndo}>Undo</button>
+          <button className="btn btn--small" onClick={redo} disabled={!canRedo}>Redo</button>
+          <button className="btn btn--small btn--primary" onClick={() => setSheet('auto')}>Plan for me</button>
+          <button className="btn btn--small btn--quiet" onClick={clearBed} disabled={plantings.length === 0}>Clear</button>
+        </div>
       </div>
 
       {(armedPlant || movingPlanting) && (
-        <p className="armed" role="status">
+        <p className="glass armed" role="status">
           {armedPlant && <>Tap a tile to plant <strong>{armedPlant.name}</strong>{armedPlant.footprint[0] * armedPlant.footprint[1] > 1 ? ` (${armedPlant.footprint[0]} × ${armedPlant.footprint[1]} ft)` : ''}.</>}
           {movingPlanting && <>Tap the tile to move <strong>{getPlant(movingPlanting.plantId)?.name}</strong> to.</>}
           <button className="btn btn--quiet" onClick={() => { setArmed(null); setMoving(null); }}>Done</button>
         </p>
       )}
 
-      <div className="bed-wrap">
+      <div className="glass bed-wrap">
         <p className={`edge ${garden.sunnySide === 'back' ? 'edge--sun' : ''}`}>Back{garden.sunnySide === 'back' ? ' · sunny side' : ''}</p>
         <div className="bed-row">
           {garden.sunnySide === 'left' && <p className="edge edge--side edge--sun">Sunny side</p>}
@@ -143,13 +144,13 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
       </div>
 
       {notes.length > 0 && (
-        <div className="card card--caution" role="status">
+        <div className="glass card card--caution" role="status">
           {notes.map((n) => <p key={n}>{n}</p>)}
           <button className="btn btn--quiet" onClick={() => setNotes([])}>OK</button>
         </div>
       )}
 
-      <section className="drawer" aria-label="Plants to add">
+      <section className="glass drawer" aria-label="Plants to add">
         <Segmented label="Plant type" value={category} onChange={setCategory} options={CATEGORY_TABS} />
         <div className="palette">
           {palette.map((p) => (
@@ -166,7 +167,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
       </section>
 
       {plantings.length > 0 && (
-        <section className="card">
+        <section className="glass card">
           <h2>In this bed</h2>
           <ul className="count-list">
             {[...counts].map(([id, n]) => <li key={id}><PlantIcon plantId={id} size={28} />{n} × {getPlant(id)!.name}</li>)}
@@ -175,7 +176,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
       )}
 
       {issues.length > 0 && (
-        <section className="card">
+        <section className="glass card">
           <h2>Hints and warnings</h2>
           <p className="note">Advice only. Nothing here stops you planting the way you want.</p>
           <ul className="issues">

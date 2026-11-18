@@ -49,7 +49,7 @@ export function CalendarTab({ onGoMore }: { onGoMore: () => void }) {
 
   return (
     <div className="calendar">
-      <div className="card">
+      <div className="glass card">
         <h1>Planting calendar</h1>
         <FrostSummary place={place} frost={frost} />
         {!frost && <button className="btn btn--primary" onClick={onGoMore}>Set location or frost dates</button>}
@@ -57,6 +57,7 @@ export function CalendarTab({ onGoMore }: { onGoMore: () => void }) {
 
       {frost && (
         <>
+          <div className="glass cal-top">
           <div className="row row--wrap row--between">
             <Segmented label="Which plants" value={show} onChange={setShow} options={[{ value: 'mine', label: 'My plants' }, { value: 'all', label: 'All 40' }]} />
             <div className="year">
@@ -66,9 +67,10 @@ export function CalendarTab({ onGoMore }: { onGoMore: () => void }) {
             </div>
           </div>
           <p className="legend"><span className="dot dot--indoors" />Start indoors <span className="dot dot--plant" />Sow or plant out <span className="dot dot--harvest" />Harvest{todayPct !== null && <><span className="dot dot--today" />Today</>}</p>
+          </div>
 
-          {plants.length === 0 && <p className="note">No plants in your bed yet. Add some in the planner, or look at all 40.</p>}
-          <ul className="cal-list">
+          {plants.length === 0 && <p className="glass card note">No plants in your bed yet. Add some in the planner, or look at all 40.</p>}
+          <ul className="glass cal-list">
             <li className="cal-months" aria-hidden="true"><span /><div className="bar-labels">{MONTHS.map((m, i) => <span key={i}>{m}</span>)}</div></li>
             {plants.map((plant) => {
               const cals = calendarsFor(plant, frost, year);
@@ -100,7 +102,7 @@ export function CalendarTab({ onGoMore }: { onGoMore: () => void }) {
               );
             })}
           </ul>
-          <p className="note">Tap a plant for exact dates and the reason behind them. Dates are estimates from averages; watch the forecast in the weeks around them.</p>
+          <p className="glass card note">Tap a plant for exact dates and the reason behind them. Dates are estimates from averages; watch the forecast in the weeks around them.</p>
         </>
       )}
     </div>

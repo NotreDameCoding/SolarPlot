@@ -30,7 +30,7 @@ export function HarvestTab({ preset }: { preset: string | null }) {
 
   return (
     <div className="harvest">
-      <form className="card" onSubmit={(e) => {
+      <form className="glass card" onSubmit={(e) => {
         e.preventDefault();
         if (!ready) return;
         add({ plantId, amount: value, unit, date, note: note.trim() || undefined });
@@ -56,7 +56,7 @@ export function HarvestTab({ preset }: { preset: string | null }) {
         <button className="btn btn--primary" type="submit" disabled={!ready}>Add to log</button>
       </form>
 
-      <section className="card">
+      <section className="glass card">
         <h2>{year} so far</h2>
         {totals.length === 0 ? <p className="note">Nothing logged yet this year. Your first harvest goes here.</p> : (
           <ul className="totals">
@@ -66,7 +66,7 @@ export function HarvestTab({ preset }: { preset: string | null }) {
       </section>
 
       {sorted.length > 0 && (
-        <section className="card">
+        <section className="glass card">
           <h2>Log</h2>
           <ul className="log">
             {sorted.map((h) => (

@@ -20,6 +20,7 @@ export function Onboarding({ onDone }: { onDone: (notes: string[]) => void }) {
 
   return (
     <main className="onboarding">
+      <div className="glass onboarding-card">
       <header>
         <p className="wordmark">SolarPlot</p>
         <p className="steps" aria-label={`Step ${step + 1} of 3`}>{[0, 1, 2].map((i) => <span key={i} className={i <= step ? 'is-on' : ''} />)}</p>
@@ -78,6 +79,7 @@ export function Onboarding({ onDone }: { onDone: (notes: string[]) => void }) {
           <p className="note">Already have plants in the ground? Start blank and place them where they really are.</p>
         </section>
       )}
+      </div>
     </main>
   );
 }

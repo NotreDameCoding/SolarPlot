@@ -19,7 +19,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   }, [onClose]);
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div className="sheet glass" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h2>{title}</h2>
           <button className="btn btn--quiet" onClick={onClose} aria-label="Close">Close</button>
@@ -55,11 +55,11 @@ export function Stepper({ value, min, max, onChange, label, unit }: { value: num
 }
 
 const ICONS: Record<string, ReactNode> = {
-  garden: <><path d="M12 21V10" /><path d="M12 14c-1-4-4-5-7-4.500 0 3.500 3 5.500 7 4.500z" /><path d="M12 11c.600-3.500 3.500-4.500 6-4 0 3-2.500 5-6 4z" /><path d="M4 21h16" /></>,
-  plan: <><rect x="3.500" y="3.500" width="17" height="17" rx="2" /><path d="M3.500 9.200h17M3.500 14.800h17M9.200 3.500v17M14.800 3.500v17" /></>,
-  calendar: <><rect x="3.500" y="5" width="17" height="15.500" rx="2" /><path d="M3.500 10h17M8 3v4M16 3v4" /></>,
-  harvest: <><path d="M4 11h16l-1.500 8.500a1 1 0 0 1-1 .800H6.500a1 1 0 0 1-1-.800z" /><path d="M8 11l3-6M16 11l-3-6" /></>,
-  more: <><circle cx="5" cy="12" r="1.400" /><circle cx="12" cy="12" r="1.400" /><circle cx="19" cy="12" r="1.400" /></>,
+  garden: <><path d="M12 20.500V11" /><path d="M12 14.500C10.800 10.600 7.600 9.300 4.600 10c.200 3.600 3.300 5.700 7.400 4.500z" /><path d="M12 11.800c.700-3.600 3.600-5.200 6.800-4.600-.200 3.300-2.900 5.500-6.800 4.600z" /><path d="M5 20.500c2.200-.900 4.500-1.200 7-1.200s4.800.300 7 1.200" /></>,
+  plan: <><path d="M4.500 6.500 12 3l7.500 3.500v10L12 20.500 4.500 16.500z" /><path d="M4.500 6.500 12 10l7.500-3.500M12 10v10.500M8.250 4.750l7.500 3.500M15.750 4.750l-7.500 3.500" /></>,
+  calendar: <><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.600 5.600 7 7M17 17l1.400 1.400M5.600 18.400 7 17M17 7l1.400-1.400" /></>,
+  harvest: <><path d="M4 11.500h16l-1.600 7.300a1.500 1.500 0 0 1-1.500 1.200H7.100a1.500 1.500 0 0 1-1.500-1.200z" /><path d="M8 11.500c0-3 1.800-5.500 4-5.500s4 2.500 4 5.500" /><path d="M9 15h6" /></>,
+  more: <><path d="M4 18c3-5 6-7 8-7s5 2 8 7" /><path d="M7 9.500a5 5 0 0 1 10 0" /><circle cx="12" cy="5" r="1.300" /></>,
 };
 
 export function Icon({ name }: { name: keyof typeof ICONS }) {

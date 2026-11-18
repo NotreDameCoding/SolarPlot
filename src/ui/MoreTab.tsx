@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { encodeShare, harvestsCsv } from '../engine';
 import { snapshot, today, useStore } from '../state/store';
-import { Segmented } from './bits';
 import { FrostSummary, LocationPicker, ManualFrost } from './Location';
 import { REPORT_URL } from './PlantSheet';
 
@@ -46,7 +45,7 @@ export function MoreTab() {
 
   return (
     <div className="more">
-      <section className="card">
+      <section className="glass card">
         <h1>Location and frost dates</h1>
         <FrostSummary place={place} frost={frost} />
         {editPlace
@@ -55,17 +54,16 @@ export function MoreTab() {
         {manual && <ManualFrost frost={frost} onChange={(f) => { state.setFrost(f); setManual(false); }} />}
       </section>
 
-      <section className="card">
+      <section className="glass card">
         <h2>Settings</h2>
         <label className="check"><input type="checkbox" checked={settings.frostAlerts} onChange={(e) => state.updateSettings({ frostAlerts: e.target.checked })} />Show frost warnings</label>
         <label className="check"><input type="checkbox" checked={settings.wateringNudge} onChange={(e) => state.updateSettings({ wateringNudge: e.target.checked })} />Show the weekly watering check</label>
         <label className="check"><input type="checkbox" checked={settings.reduceMotion} onChange={(e) => state.updateSettings({ reduceMotion: e.target.checked })} />Reduce motion in the garden scene</label>
         <p className="note">Warnings appear in the app when you open it. Email and push alerts need accounts, which are not built yet.</p>
-        <h3>Theme</h3>
-        <Segmented label="Theme" value={settings.theme} onChange={(theme) => state.updateSettings({ theme })} options={[{ value: 'auto', label: 'Match device' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
+        <p className="note">The app's colors follow the sky in your garden: golden by day, grey in rain, pale in snow and dusky at night.</p>
       </section>
 
-      <section className="card">
+      <section className="glass card">
         <h2>Share your garden</h2>
         <p>Anyone with this link sees a read-only copy of your layout and its scene. It includes your garden's name and town, not your exact location, dates or harvests.</p>
         <button className="btn btn--primary" onClick={() => void copy()} disabled={plantings.length === 0}>Copy share link</button>
@@ -74,7 +72,7 @@ export function MoreTab() {
         <p className="note">The link is a snapshot. Make a new one after you change the bed.</p>
       </section>
 
-      <section className="card">
+      <section className="glass card">
         <h2>Your data</h2>
         <p>Everything is stored in this browser only. Clearing your browser data, or switching devices, loses it, so export a backup now and then.</p>
         <div className="row row--wrap">
@@ -85,7 +83,7 @@ export function MoreTab() {
         </div>
         {importMsg && <p className="note" role="status">{importMsg}</p>}
         {confirmDelete ? (
-          <div className="card card--alert">
+          <div className="glass card card--alert">
             <p>This deletes your garden, harvest log and settings from this browser. It cannot be undone.</p>
             <div className="row row--wrap">
               <button className="btn btn--danger" onClick={() => { state.deleteEverything(); setConfirmDelete(false); }}>Yes, delete everything</button>
@@ -95,7 +93,7 @@ export function MoreTab() {
         ) : <button className="btn btn--danger" onClick={() => setConfirmDelete(true)}>Delete all my data</button>}
       </section>
 
-      <section className="card">
+      <section className="glass card">
         <h2>About SolarPlot</h2>
         <p>SolarPlot is a free garden planner for beginners in the United States, built by a high-school student and the Notre Dame coding club. It is an early version: the planting advice is a first draft that has not yet been reviewed by a Master Gardener, so double-check dates with your local extension office.</p>
         <p>Inspired by the feeling of solarpunk films and hand-painted animation. All art is original and drawn in code.</p>

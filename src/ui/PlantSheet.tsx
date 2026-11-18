@@ -42,7 +42,7 @@ export function PlantSheet({ plant, planting, onClose, onMove, onLogHarvest }: {
       </div>
 
       {planting && (
-        <div className="card card--inset">
+        <div className="glass card card--inset">
           <h3>{planting.plantedOn ? `In the ground since ${fmtDate(planting.plantedOn, true)}` : 'Is it in the ground yet?'}</h3>
           <div className="row row--wrap">
             <label>Planted on<input type="date" value={date} max={now} onChange={(e) => setDate(e.target.value)} /></label>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { getPlant, growth, rectOf, type Garden, type ISO, type Planting, type SceneMode } from '../engine';
-import { createScene, type Scene, type SceneGarden } from '../scene/scene.js';
+import { createScene, type Scene, type SceneGarden, type SceneViewName } from '../scene/scene.js';
 
 /** True when nothing has a planting date yet, so the scene shows the plan fully grown. */
 export const isPreview = (plantings: Planting[]) => !plantings.some((p) => p.plantedOn);
@@ -21,24 +21,27 @@ export function toSceneGarden(garden: Garden, plantings: Planting[], today: ISO)
 }
 
 interface Props {
-  garden: Garden;
+  /** Null shows the demo bed from the concept art. */
+  garden: Garden | null;
   plantings: Planting[];
   mode: SceneMode;
   today: ISO;
   still: boolean;
+  view: SceneViewName;
 }
 
 const MODE_WORDS: Record<SceneMode, string> = { clear: 'on a clear golden evening', rain: 'in the rain', snow: 'under snow', night: 'at night' };
 
-export function SceneView({ garden, plantings, mode, today, still }: Props) {
+/** The living painted world behind the whole app. One canvas; each tab moves the camera. */
+export function SceneView({ garden, plantings, mode, today, still, view }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const scene = useRef<Scene | null>(null);
-  const data = useMemo(() => toSceneGarden(garden, plantings, today), [garden, plantings, today]);
+  const data = useMemo(() => (garden ? toSceneGarden(garden, plantings, today) : null), [garden, plantings, today]);
   const key = JSON.stringify(data);
 
   useEffect(() => {
     if (!canvas.current) return;
-    const s = createScene(canvas.current, { mode, garden: data, still });
+    const s = createScene(canvas.current, { mode, garden: data, still, view });
     scene.current = s;
     return () => {
       s.destroy();
@@ -56,7 +59,10 @@ export function SceneView({ garden, plantings, mode, today, still }: Props) {
   }, [key]);
   useEffect(() => scene.current?.setMode(mode), [mode]);
   useEffect(() => scene.current?.setStill(still), [still]);
+  useEffect(() => scene.current?.setView(view), [view]);
 
-  const label = `Your ${garden.cols} by ${garden.rows} foot garden bed with ${data.cells.length} planted tiles, ${MODE_WORDS[mode]}, in a river valley with wind turbines and a solar cottage.`;
-  return <canvas ref={canvas} className="scene" width={678} height={480} role="img" aria-label={label} />;
+  const label = garden && data
+    ? `Your ${garden.cols} by ${garden.rows} foot garden bed with ${data.cells.length} planted tiles, ${MODE_WORDS[mode]}, in a river valley with wind turbines and a solar cottage.`
+    : `A painted river valley ${MODE_WORDS[mode]}, with a raised garden bed, wind turbines and a solar cottage.`;
+  return <canvas ref={canvas} className="backdrop" role="img" aria-label={label} />;
 }
