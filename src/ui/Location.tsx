@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fetchFrost, searchPlaces } from '../api/climate';
-import { describeFrost, frostFromManual, fromDayOfYear, isISO, type FrostInfo } from '../engine';
+import { describeFrost, fmtDate, frostFromManual, fromDayOfYear, isISO, type FrostInfo } from '../engine';
 import { today, type Place } from '../state/store';
 
 /** Search for a town or ZIP, then look up its frost dates. */
@@ -73,13 +73,13 @@ export function FrostSummary({ place, frost }: { place: Place | null; frost: Fro
   const year = Number(today().slice(0, 4));
   if (!frost) return <p className="note">{place ? `${place.name}: frost dates not set yet.` : 'No location yet, so the calendar cannot work out dates.'}</p>;
   return (
-    <p className="frost-summary">
-      {place && <strong>{place.name}. </strong>}
-      {describeFrost(frost, year)}
-      {frost.zone && ` Hardiness zone ${frost.zone}.`}
+    <div className="frost-summary">
+      <p>{place && <strong>{place.name}. </strong>}{describeFrost(frost, year)}</p>
+      {frost.lastSpring && <p>Frost-tender crops like tomatoes are planned from <strong>{fmtDate(fromDayOfYear(year, frost.lastSpring.late))}</strong>, when the chance of another frost has dropped to about 1 in 10.</p>}
+      {frost.zone && frost.source !== 'history' && <p>USDA hardiness zone {frost.zone} (how cold winters get; it matters for plants that live through winter).</p>}
       <span className="note"> {frost.source === 'noaa'
         ? `Official NOAA 1991–2020 frost records from ${titleCase(frost.station ?? 'the nearest station')}, ${frost.stationKm} km away.`
         : frost.source === 'history' ? `Estimated from ${frost.years} years of Open-Meteo temperature records, which can run early. Check it against your county extension office, or enter dates by hand.` : 'From the dates you entered.'}</span>
-    </p>
+    </div>
   );
 }

@@ -21,6 +21,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
   const { addPlanting, movePlanting, undo, redo, clearBed, plantCrop } = useStore.getState();
 
   const [category, setCategory] = useState<Category | 'all'>('all');
+  const [search, setSearch] = useState('');
   const [armed, setArmed] = useState<string | null>(null); // plant chosen in the drawer, waiting for a tile
   const [selected, setSelected] = useState<string | null>(null); // planting whose sheet is open
   const [moving, setMoving] = useState<string | null>(null); // planting waiting for a destination tile
@@ -79,7 +80,10 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
   };
 
   const sunWord = garden.sun === 'full' ? 'full sun' : garden.sun === 'part' ? 'part sun' : 'shade';
-  const palette = PLANTS.filter((p) => category === 'all' || p.category === category);
+  const q = search.trim().toLowerCase();
+  const palette = PLANTS.filter((p) => (category === 'all' || p.category === category) && (!q || p.name.toLowerCase().includes(q) || p.family.toLowerCase().includes(q)));
+  const usedTiles = plantings.reduce((n, p) => n + rectOf(p).w * rectOf(p).h, 0);
+  const freeTiles = Math.max(0, garden.cols * garden.rows - usedTiles);
 
   return (
     <div className="plan">
@@ -95,7 +99,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
           <button className="btn btn--small" onClick={undo} disabled={!canUndo}>Undo</button>
           <button className="btn btn--small" onClick={redo} disabled={!canRedo}>Redo</button>
           <button className="btn btn--small btn--primary" onClick={() => setSheet('auto')}>Plan for me</button>
-          <button className="btn btn--small btn--quiet" onClick={clearBed} disabled={plantings.length === 0}>Clear</button>
+          <button className="btn btn--small btn--quiet" onClick={() => { clearBed(); setNotes(['Bed cleared. Undo brings everything back.']); }} disabled={plantings.length === 0}>Clear</button>
         </div>
       </div>
 
@@ -151,7 +155,9 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
       )}
 
       <section className="glass drawer" aria-label="Plants to add">
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search plants" aria-label="Search plants" />
         <Segmented label="Plant type" value={category} onChange={setCategory} options={CATEGORY_TABS} />
+        {palette.length === 0 && <p className="note">No plant called "{search}" yet. The launch list has 40 plants; more are coming.</p>}
         <div className="palette">
           {palette.map((p) => (
             <button key={p.id} type="button" className={`palette-item ${armed === p.id ? 'is-on' : ''}`} aria-pressed={armed === p.id}
@@ -169,6 +175,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
       {plantings.length > 0 && (
         <section className="glass card">
           <h2>In this bed</h2>
+          <p className="note">{usedTiles} of {garden.cols * garden.rows} squares used{freeTiles ? `, ${freeTiles} free` : ''}. Numbers are plants: "16 × Carrot" means 16 carrots. On the bed, "×9" means nine plants in that one square.</p>
           <p className="note">Mark each crop as planted when it goes in. The garden scene then grows it from a seedling.</p>
           <ul className="crop-list">
             {[...counts].map(([id, n]) => {
@@ -184,12 +191,14 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
                   </span>
                   {planted
                     ? <button className="btn btn--small btn--quiet" onClick={() => plantCrop(id, null)}>Undo</button>
-                    : <button className="btn btn--small btn--primary" onClick={() => plantCrop(id, today())}>Planted today</button>}
+                    : <span className="crop-actions">
+                        <button className="btn btn--small btn--primary" onClick={() => plantCrop(id, today())}>Planted today</button>
+                        <button className="btn btn--small btn--quiet" onClick={() => setSelected(tiles[0].id)}>Other day…</button>
+                      </span>}
                 </li>
               );
             })}
           </ul>
-          <p className="note">Planted on a different day? Tap the crop in the bed to set the date.</p>
         </section>
       )}
 

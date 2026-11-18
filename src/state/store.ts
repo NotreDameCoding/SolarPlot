@@ -36,6 +36,8 @@ export interface Saved {
   settings: Settings;
   weather: Weather | null;
   nextId: number;
+  /** Date of the last full backup export, to nudge people who never back up. */
+  lastExport: ISO | null;
 }
 
 interface Actions {
@@ -62,6 +64,7 @@ interface Actions {
   toggleChecklist(key: string): void;
   updateSettings(patch: Partial<Settings>): void;
   importData(data: unknown): boolean;
+  markExported(on: ISO): void;
   deleteEverything(): void;
 }
 
@@ -88,6 +91,7 @@ const fresh = (): Saved => ({
   settings: { reduceMotion: false, frostAlerts: true, wateringNudge: true, theme: 'auto' },
   weather: null,
   nextId: 1,
+  lastExport: null,
 });
 
 const clampGarden = (g: Garden): Garden => ({
@@ -115,6 +119,7 @@ function readSaved(raw: unknown): Saved | null {
     settings: { ...base.settings, ...d.settings },
     weather: d.weather ?? null,
     nextId: typeof d.nextId === 'number' ? d.nextId : d.plantings.length + d.harvests.length + 1,
+    lastExport: typeof d.lastExport === 'string' ? d.lastExport : null,
   };
 }
 
@@ -129,8 +134,8 @@ function load(): Saved {
 
 /** The part of the state that gets saved and exported. */
 export function snapshot(s: State): Saved {
-  const { version, onboarded, place, frost, goal, garden, plantings, harvests, checklist, settings, weather, nextId } = s;
-  return { version, onboarded, place, frost, goal, garden, plantings, harvests, checklist, settings, weather, nextId };
+  const { version, onboarded, place, frost, goal, garden, plantings, harvests, checklist, settings, weather, nextId, lastExport } = s;
+  return { version, onboarded, place, frost, goal, garden, plantings, harvests, checklist, settings, weather, nextId, lastExport };
 }
 
 export const useStore = create<State>()((set, get) => {
@@ -244,6 +249,7 @@ export const useStore = create<State>()((set, get) => {
       set({ ...saved, past: [], future: [] });
       return true;
     },
+    markExported: (on) => set({ lastExport: on }),
     deleteEverything() {
       try { localStorage.removeItem(KEY); } catch { /* nothing to remove */ }
       set({ ...fresh(), past: [], future: [] });

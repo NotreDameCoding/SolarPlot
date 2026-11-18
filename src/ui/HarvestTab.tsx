@@ -18,7 +18,10 @@ export function HarvestTab({ preset }: { preset: string | null }) {
   const choices = [...mine.map((id) => getPlant(id)!).filter(Boolean), ...PLANTS.filter((p) => !mine.includes(p.id))];
   const [plantId, setPlantId] = useState(preset ?? choices[0]?.id ?? 'tomato');
   const [amount, setAmount] = useState('');
-  const [unit, setUnit] = useState<Harvest['unit']>('lb');
+  const [unit, setUnitState] = useState<Harvest['unit']>(() => {
+    try { return (localStorage.getItem('solarplot:unit') as Harvest['unit']) || 'lb'; } catch { return 'lb'; }
+  });
+  const setUnit = (u: Harvest['unit']) => { setUnitState(u); try { localStorage.setItem('solarplot:unit', u); } catch { /* ignore */ } };
   const [date, setDate] = useState(now);
   const [note, setNote] = useState('');
 
@@ -40,7 +43,8 @@ export function HarvestTab({ preset }: { preset: string | null }) {
         <h1>Log a harvest</h1>
         <label>Plant
           <select value={plantId} onChange={(e) => setPlantId(e.target.value)}>
-            {choices.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {mine.length > 0 && <optgroup label="In your bed">{choices.slice(0, mine.length).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>}
+            <optgroup label={mine.length ? 'Other plants' : 'All plants'}>{choices.slice(mine.length).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
           </select>
         </label>
         <div className="row">

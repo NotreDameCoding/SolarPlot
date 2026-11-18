@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { calendarsFor, dayOfYear, fmtRange, PLANTS, plantingStatus, yearOf, type DateWindow, type Plant, type PlantCalendar } from '../engine';
 import { today, useStore } from '../state/store';
 import { PlantIcon, Segmented } from './bits';
+import { download } from './download';
+import { plantingIcs } from './ics';
 import { FrostSummary } from './Location';
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** Where a window sits on a January-to-December bar, as percentages. Parts outside the year are cut off. */
 function span(w: DateWindow, year: number): { left: string; width: string } | null {
@@ -52,7 +55,13 @@ export function CalendarTab({ onGoMore }: { onGoMore: () => void }) {
       <div className="glass card">
         <h1>Planting calendar</h1>
         <FrostSummary place={place} frost={frost} />
-        {!frost && <button className="btn btn--primary" onClick={onGoMore}>Set location or frost dates</button>}
+        {!frost
+          ? <button className="btn btn--primary" onClick={onGoMore}>Set location or frost dates</button>
+          : <div className="row row--wrap">
+              <button className="btn btn--small" onClick={onGoMore}>Change location</button>
+              <button className="btn btn--small" onClick={() => download(`solarplot-planting-${year}.ics`, plantingIcs(plants.map((p) => p.id), frost, year), 'text/calendar')} disabled={plants.length === 0}>Add {year} dates to my calendar (.ics)</button>
+            </div>}
+        <p className="note">Planting data is a first draft that hasn't been reviewed by a Master Gardener yet. Check important dates with your county extension office.</p>
       </div>
 
       {frost && (
@@ -71,13 +80,14 @@ export function CalendarTab({ onGoMore }: { onGoMore: () => void }) {
 
           {plants.length === 0 && <p className="glass card note">No plants in your bed yet. Add some in the planner, or look at all 40.</p>}
           <ul className="glass cal-list">
-            <li className="cal-months" aria-hidden="true"><span /><div className="bar-labels">{MONTHS.map((m, i) => <span key={i}>{m}</span>)}</div></li>
+            <li className="cal-months" aria-hidden="true"><span /><div className="bar-labels">{MONTHS.map((m, i) => <span key={i} title={MONTH_NAMES[i]}>{m}</span>)}</div></li>
             {plants.map((plant) => {
               const cals = calendarsFor(plant, frost, year);
               const isOpen = open === plant.id;
               return (
                 <li key={plant.id} className="cal-row">
-                  <button type="button" className="cal-head" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : plant.id)}>
+                  <button type="button" className="cal-head" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : plant.id)}
+                    aria-label={`${plant.name}: ${cals.length ? cals.map((c) => `${c.startIndoors ? `start indoors ${fmtRange(c.startIndoors.start, c.startIndoors.end)}, ` : ''}${c.method === 'transplant' ? 'plant out' : 'sow'} ${fmtRange(c.plantOut.start, c.plantOut.end)}, harvest ${fmtRange(c.harvest.start, c.harvest.end)}`).join('; then ') : 'no planting window here'}`}>
                     <span className="cal-name"><PlantIcon plantId={plant.id} size={30} />{plant.name}</span>
                     <Bar cals={cals} year={year} todayPct={todayPct} />
                   </button>

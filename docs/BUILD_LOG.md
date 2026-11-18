@@ -58,3 +58,21 @@ The product idea, feature decisions, art direction and approval of the scene are
 - New beds default to 8 ft wide by 4 ft deep (long side facing you), and Edit bed has "Turn bed a quarter turn".
 - Snow keeps your crops: winter versions where they exist, otherwise your own plant dusted with snow.
 - Bush bean, potato, parsley, cilantro, mint, oregano, rosemary and sage have their own pictures instead of sharing basil's.
+
+## 2026-11-17: fixes from the 100-point site review
+
+Fixed:
+- Old saved gardens with an Open-Meteo frost estimate upgrade to NOAA station dates automatically. (The reviewer's "zone from 10 years of data" came from an estimate saved before the NOAA switch; Boise was also saved in that browser from testing, not a default.)
+- Honest Garden tab: a clear "showing your plan, nothing planted yet" flag, alt text says planned vs planted, frost warnings only when something is in the ground, "This week" lists the next four things coming up in the off-season.
+- Data safety: monthly "Back up your garden" card with a one-tap backup, last backup date in Settings, and the browser is asked to keep the site's storage.
+- Every tab has its own address (#/plan, #/calendar...), so Back works and tabs can be linked; page titles change per tab.
+- First visit always opens on a golden day with a one-line explanation of what SolarPlot does.
+- "More" is now "Settings" with a gear icon; Calendar has Change location and a downloadable .ics of planting dates.
+- Frost text says which date tender crops are planned around; zone shown separately with a plain explanation and only from NOAA data.
+- Planner: plant search, squares used/free, "×9" explained, "Other day…" next to "Planted today", Clear says Undo brings it back.
+- Calendar rows have full text labels for screen readers; harvest bars striped, not just coloured.
+- Share links leave out the town unless you tick "Include my town"; Privacy section; Master Gardener disclaimer next to the calendar; link to this build log.
+- Harvest form remembers the unit and groups your own plants first.
+- Checklist items have "How?" help. Page has Open Graph tags and a real no-JavaScript message. Higher contrast for grey text in rain and night.
+
+Not done yet (bigger features): accounts and sync, push/email alerts, offline mode, multiple beds and containers, varieties, succession planting, crop rotation, pests, more plants, yields, photos.

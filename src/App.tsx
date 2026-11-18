@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fetchFrost } from './api/climate';
 import { decodeShare, getPlant, plantCounts, type SharedGarden } from './engine';
 import { today, useStore } from './state/store';
 import { Icon, PlantIcon } from './ui/bits';
@@ -11,16 +12,20 @@ import { PlanTab } from './ui/PlanTab';
 import { SceneView } from './ui/SceneView';
 import { skyFor, type SceneChoice } from './ui/sky';
 import { useWeather } from './ui/useWeather';
+import { askToKeepData } from './ui/download';
 import type { SceneViewName } from './scene/scene.js';
 
 type Tab = 'garden' | 'plan' | 'calendar' | 'harvest' | 'more';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'garden', label: 'Garden' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'harvest', label: 'Harvest' },
-  { id: 'more', label: 'More' },
+const TABS: { id: Tab; label: string; path: string }[] = [
+  { id: 'garden', label: 'Garden', path: 'garden' },
+  { id: 'plan', label: 'Plan', path: 'plan' },
+  { id: 'calendar', label: 'Calendar', path: 'calendar' },
+  { id: 'harvest', label: 'Harvest', path: 'harvest' },
+  { id: 'more', label: 'Settings', path: 'settings' },
 ];
+
+/** Each tab has its own address (#/plan, #/calendar...), so Back works and tabs can be linked. */
+const tabFromUrl = (): Tab => TABS.find((t) => location.hash === `#/${t.path}`)?.id ?? 'garden';
 
 const readShare = (): SharedGarden | null => (location.hash.startsWith('#g=') ? decodeShare(location.hash.slice(3)) : null);
 const systemStill = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -32,31 +37,50 @@ export function App() {
   const reduceMotion = useStore((s) => s.settings.reduceMotion);
   const place = useStore((s) => s.place);
   const wx = useWeather();
-  const [tab, setTab] = useState<Tab>('garden');
+  const [tab, setTab] = useState<Tab>(tabFromUrl);
   const [choice, setChoice] = useState<SceneChoice>('live');
   const [shared, setShared] = useState<SharedGarden | null>(readShare);
   const [badLink, setBadLink] = useState(() => location.hash.startsWith('#g=') && !readShare());
   const [harvestPreset, setHarvestPreset] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
 
-  const sky = shared ? 'clear' : skyFor(wx.weather, choice);
+  // First visit and shared gardens always open on a golden day; after that the sky is live.
+  const sky = shared || !onboarded ? 'clear' : skyFor(wx.weather, choice);
   const still = reduceMotion || systemStill();
 
   // The whole interface takes its colors from the sky in the scene.
   useEffect(() => { document.documentElement.dataset.sky = sky; }, [sky]);
 
   useEffect(() => {
-    const onHash = () => { setShared(readShare()); setBadLink(location.hash.startsWith('#g=') && !readShare()); };
+    const onHash = () => { setShared(readShare()); setBadLink(location.hash.startsWith('#g=') && !readShare()); setTab(tabFromUrl()); };
     window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onHash);
+    return () => { window.removeEventListener('hashchange', onHash); window.removeEventListener('popstate', onHash); };
   }, []);
+
+  useEffect(() => {
+    const t = TABS.find((x) => x.id === tab)!;
+    document.title = shared ? `${shared.garden.name} · SolarPlot` : !onboarded ? 'SolarPlot: plan your garden' : `${t.label} · SolarPlot`;
+  }, [tab, shared, onboarded]);
+
+  // Gardens set up before NOAA data existed keep an Open-Meteo estimate; quietly upgrade them.
+  const frost = useStore((s) => s.frost);
+  useEffect(() => {
+    if (!place || frost?.source !== 'history') return;
+    void fetchFrost(place, today()).then((f) => { if (f?.source === 'noaa') useStore.getState().setFrost(f); });
+  }, [place, frost?.source]);
 
   const leaveShare = () => {
     history.replaceState(null, '', location.pathname + location.search);
     setShared(null);
     setBadLink(false);
   };
-  const go = (t: Tab) => { setTab(t); window.scrollTo(0, 0); };
+  const go = (t: Tab) => {
+    const path = `#/${TABS.find((x) => x.id === t)!.path}`;
+    if (location.hash !== path) history.pushState(null, '', path);
+    setTab(t);
+    window.scrollTo(0, 0);
+  };
 
   // The camera never moves between tabs: every tab looks at the same garden.
   const view: SceneViewName = onboarded || shared ? 'garden' : 'wide';
@@ -70,7 +94,7 @@ export function App() {
   const broken = badLink && <p className="glass banner" role="alert">That share link is broken or out of date. <button className="link" onClick={leaveShare}>Dismiss</button></p>;
 
   if (shared) return <>{backdrop}<ShareView shared={shared} onLeave={leaveShare} /></>;
-  if (!onboarded) return <>{backdrop}{broken}<Onboarding onDone={(n) => { setNotes(n); setTab('garden'); }} /></>;
+  if (!onboarded) return <>{backdrop}{broken}<Onboarding onDone={(n) => { setNotes(n); setTab('garden'); askToKeepData(); }} /></>;
 
   return (
     <>

@@ -28,6 +28,7 @@ export function Onboarding({ onDone }: { onDone: (notes: string[]) => void }) {
 
       {step === 0 && (
         <section>
+          <p className="welcome">SolarPlot tells you what to plant, where and when, then shows your bed as a living garden that follows your real sky. Free, no account.</p>
           <h1>Where is your garden?</h1>
           <p>Your location sets your frost dates and weather. SolarPlot is for gardens in the United States for now.</p>
           <LocationPicker onPicked={(p, f) => { setPlace(p); setFrost(f); }} />

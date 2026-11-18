@@ -5,15 +5,16 @@ import {
 } from '../engine';
 import { today, useStore } from '../state/store';
 import { Segmented } from './bits';
+import { exportBackup } from './download';
 import { isPreview } from './SceneView';
 import type { SceneChoice } from './sky';
 import type { useWeather } from './useWeather';
 
-export const CHECKLIST: { key: string; text: string }[] = [
-  { key: 'fill', text: 'Fill the bed, or mix a few inches of compost into the soil' },
-  { key: 'drainage', text: 'Check drainage: a bucket of water should soak in within minutes' },
-  { key: 'weeds', text: 'Clear weeds and grass, roots and all' },
-  { key: 'water', text: 'Make sure a hose or watering can reaches the bed' },
+export const CHECKLIST: { key: string; text: string; how: string }[] = [
+  { key: 'fill', text: 'Fill the bed, or mix a few inches of compost into the soil', how: 'For a raised bed, a common mix is about 60% topsoil and 40% compost. Bagged "garden soil" works too; avoid plain potting mix, which dries out.' },
+  { key: 'drainage', text: 'Check drainage', how: 'Dig a hole about a foot deep, fill it with water, and let it drain. Fill it again: the second time it should drain within a few hours. If not, raise the bed or add compost.' },
+  { key: 'weeds', text: 'Clear weeds and grass, roots and all', how: 'Pull or dig them out. Under a raised bed, a layer of plain cardboard smothers grass before you fill it.' },
+  { key: 'water', text: 'Make sure a hose or watering can reaches the bed', how: 'Most beds need about an inch of water a week, roughly 0.6 gallons per square foot.' },
 ];
 
 interface Task {
@@ -77,26 +78,32 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
     return out;
   }, [plantings, frost, weather, now]);
 
-  const nextUp = useMemo(() => {
-    if (!frost || tasks.length > 0) return null;
-    let best: { name: string; date: string; indoors: boolean } | null = null;
+  // What's coming up, so the off-season still has something useful to say.
+  const upcoming = useMemo(() => {
+    if (!frost) return [];
+    const all: { name: string; date: string; indoors: boolean }[] = [];
     for (const id of new Set(plantings.filter((p) => !p.plantedOn).map((p) => p.plantId))) {
       const plant = getPlant(id);
       if (!plant) continue;
       for (const year of [Number(now.slice(0, 4)), Number(now.slice(0, 4)) + 1]) {
         for (const cal of calendarsFor(plant, frost, year)) {
           const date = cal.startIndoors?.start ?? cal.plantOut.start;
-          if (date > now && (!best || date < best.date)) best = { name: plant.name, date, indoors: !!cal.startIndoors };
+          if (date > now) all.push({ name: plant.name, date, indoors: !!cal.startIndoors });
         }
       }
     }
-    return best;
-  }, [plantings, frost, tasks.length, now]);
+    const seen = new Set<string>();
+    return all.sort((a, b) => (a.date < b.date ? -1 : 1)).filter((u) => !seen.has(u.name) && seen.add(u.name)).slice(0, 4);
+  }, [plantings, frost, now]);
 
   const nudge = weather && settings.wateringNudge && inGround.length > 0 && weather.pastRainIn !== null
     ? wateringNudge(weather.pastRainIn, weather.nextRainIn ?? 0, weeklyNeedIn(plantings.filter((p) => p.plantedOn)))
     : null;
   const checklistLeft = CHECKLIST.filter((c) => !checklist[c.key]).length;
+  const lastExport = useStore((s) => s.lastExport);
+  const needsBackup = plantings.length > 0 && (!lastExport || now.slice(0, 7) !== lastExport.slice(0, 7));
+  const minsAgo = weather ? Math.max(0, Math.round((Date.now() - weather.fetchedAt) / 60000)) : 0;
+  const updated = minsAgo < 1 ? 'just now' : minsAgo < 60 ? `${minsAgo} min ago` : `${Math.round(minsAgo / 60)} h ago`;
 
   return (
     <div className="garden">
@@ -107,10 +114,12 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
           {weather
             ? <><strong>{weather.tempF !== null ? `${weather.tempF}°F` : ''}</strong> {weather.text}{place ? ` in ${place.name}` : ''}</>
             : place ? (loading ? 'Checking the weather…' : failed ? 'Weather is unavailable, so the sky shows a clear day.' : 'Weather not loaded yet.') : 'Set your location to see your real sky.'}
-          {place && !loading && <button className="link" onClick={() => void refresh()}>Refresh</button>}
           {!place && <button className="link" onClick={onGoMore}>Set location</button>}
         </p>
-        <Segmented label="Sky" value={choice} onChange={onChoice}
+        {place && <p className="note updated">{weather ? `Updated ${updated}` : ''}{!loading && <button className="btn btn--small" onClick={() => void refresh()}>Refresh</button>}</p>}
+        {preview && plantings.length > 0 && <p className="preview-flag">Showing your plan at full size. Nothing is marked as planted yet.</p>}
+        <p className="note">Preview the garden in other weather:</p>
+        <Segmented label="Preview the sky" value={choice} onChange={onChoice}
           options={[{ value: 'live', label: 'Live' }, { value: 'clear', label: 'Day' }, { value: 'rain', label: 'Rain' }, { value: 'snow', label: 'Snow' }, { value: 'night', label: 'Night' }]} />
         {weather && <p className="note">{sky === 'clear' && weather.sky === 'cloudy' ? 'Overcast skies show as a clear day for now. ' : ''}Weather from {weather.source === 'open-meteo' ? 'Open-Meteo' : weather.source === 'nws' ? 'the National Weather Service' : 'the National Weather Service and Open-Meteo'}.</p>}
       </div>
@@ -122,10 +131,11 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
           <button className="btn btn--primary" onClick={onGoPlan}>Open the planner</button>
         </div>
       ) : preview && (
-        <p className="glass note scene-note">This is your plan at full size. Once you mark plants as planted in the planner, the scene shows them growing from their real planting dates.</p>
+        <p className="glass note scene-note">When you mark crops as planted (Plan tab, "In this bed"), the scene shows them growing from seedlings on their real dates.</p>
       )}
 
-      {alert && (
+      {/* Only warn about frost when something is actually in the ground. */}
+      {alert && inGround.length > 0 && (
         <div className={`glass card ${alert.plants.length ? 'card--alert' : 'card--quiet'}`} role={alert.plants.length ? 'alert' : 'status'}>
           <h2>{alert.level === 'freeze' ? 'Hard freeze warning' : 'Frost warning'}</h2>
           <p>{alert.text}</p>
@@ -137,7 +147,12 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
         <div className="glass card">
           <h2>This week</h2>
           {!frost && <p>Set your location and SolarPlot will tell you when each plant goes in. <button className="link" onClick={onGoMore}>Set location</button></p>}
-          {frost && tasks.length === 0 && <p>Nothing to do right now.{nextUp && ` Next up: ${nextUp.indoors ? 'start' : 'plant'} ${nextUp.name.toLowerCase()}${nextUp.indoors ? ' seeds indoors' : ''} from ${fmtDate(nextUp.date, true)}.`}</p>}
+          {frost && tasks.length === 0 && <p>Nothing to plant this week.{upcoming.length > 0 ? ' Coming up:' : ''}</p>}
+          {frost && tasks.length === 0 && upcoming.length > 0 && (
+            <ul className="upcoming">
+              {upcoming.map((u) => <li key={u.name}><strong>{fmtDate(u.date, u.date.slice(0, 4) !== now.slice(0, 4))}</strong> {u.indoors ? `Start ${u.name.toLowerCase()} seeds indoors` : `Plant ${u.name.toLowerCase()}`}</li>)}
+            </ul>
+          )}
           <ul className="tasks">
             {tasks.map((t) => (
               <li key={t.key} className={`task task--${t.tone}`}>
@@ -158,6 +173,14 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
         </div>
       )}
 
+      {needsBackup && (
+        <div className="glass card">
+          <h2>Back up your garden</h2>
+          <p>Your garden is saved only in this browser. Clearing browser data or switching phones would lose it. A backup file takes a second; Settings can load it back.</p>
+          <button className="btn btn--primary" onClick={exportBackup}>Download a backup</button>
+        </div>
+      )}
+
       {checklistLeft > 0 && (
         <div className="glass card">
           <h2>Before you plant</h2>
@@ -165,6 +188,7 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
             {CHECKLIST.map((c) => (
               <li key={c.key}>
                 <label className="check"><input type="checkbox" checked={!!checklist[c.key]} onChange={() => toggleChecklist(c.key)} />{c.text}</label>
+                <details className="how"><summary>How?</summary><p>{c.how}</p></details>
               </li>
             ))}
           </ul>

@@ -62,7 +62,7 @@ export function SceneView({ garden, plantings, mode, today, still, view }: Props
   useEffect(() => scene.current?.setView(view), [view]);
 
   const label = garden && data
-    ? `Your ${garden.cols} by ${garden.rows} foot garden bed with ${data.cells.length} planted tiles, ${MODE_WORDS[mode]}, in a river valley with wind turbines and a solar cottage.`
+    ? `Your ${garden.cols} by ${garden.rows} foot garden bed, ${isPreview(plantings) ? `showing ${data.cells.length} planned tiles at full size (nothing planted yet)` : `with ${data.cells.length} planted tiles`}, ${MODE_WORDS[mode]}, in a river valley with wind turbines and a solar cottage.`
     : `A painted river valley ${MODE_WORDS[mode]}, with a raised garden bed, wind turbines and a solar cottage.`;
   return <canvas ref={canvas} className="backdrop" role="img" aria-label={label} />;
 }
