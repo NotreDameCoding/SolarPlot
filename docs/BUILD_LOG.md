@@ -36,5 +36,4 @@ The product idea, feature decisions, art direction and approval of the scene are
 - The scene sizes the bed to fit the screen width, so wide beds are fully visible on phones.
 - Newly planted crops show as seedlings (a sprout for seeds, a few true leaves for transplants) and switch to the grown plant once about a third of the way to harvest. Transplants now start at 10% grown instead of 25%.
 - One-tap planting: "Planted today" for each crop in the Plan tab's crop list, and "I planted it today" on This week tasks. Tapping a crop in the bed still lets you pick a different date.
-- Garden framing: the scene now works out the clear area not covered by cards (right column on wide screens, above the cards elsewhere) and sizes the bed, tallest plants and front frame included, to fit inside it. Previously a big bed on a wide screen ran off the edge and under the cards.
 - "Plan for me" now fills every tile: crops first share tiles evenly (up to 6 each), then the rest is shared out until the bed is full. If only big plants are chosen, more of them are added while they fit. Beds over 40 sq ft get up to 10 crops in the starter set.
