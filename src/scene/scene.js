@@ -249,20 +249,25 @@ if(mode=='snow'){D.snow.forEach(f=>{f.y+=f.v*dt;f.x+=Math.sin(t*.5+f.ph)*6*dt;if
 if(mode=='clear'){X.globalCompositeOperation='screen';X.globalAlpha=.7+.3*Math.sin(t*.15);X.drawImage(D.lt,0,0,W,H);X.globalAlpha=1;X.globalCompositeOperation='source-over'}
 if(mode=='snow'){X.globalCompositeOperation='screen';X.fillStyle=RG(X,420,96,0,320,[[0,'rgba(255,205,185,.18)'],[1,'rgba(255,205,185,0)']]);X.fillRect(0,0,W,H);X.globalCompositeOperation='source-over'}X.drawImage(D.fg,0,(H-100)*S,W*S,100*S,Math.sin(t*.04)*2.5,H-100,W,100);if(mode=='rain'){const f=(t+LO)%12.5,a=f<1.4?.16*Math.exp(-f*7)+(f>.3?.1*Math.exp(-(f-.3)*5):0):0;if(a>.004){X.globalCompositeOperation='screen';X.fillStyle=LG(X,0,0,0,H,[[0,`rgba(215,225,255,${a})`],[1,`rgba(215,225,255,${a*.3})`]]);X.fillRect(0,0,W,H);X.globalCompositeOperation='source-over'}}X.fillStyle=RG(X,340,330,180,520,[[0,'rgba(25,20,30,0)'],[1,`rgba(25,20,30,${mode=='night'?.4:.2})`]]);X.fillRect(0,0,W,H);blit(dt);if(!dead&&!still)raf=requestAnimationFrame(frame)}
 function views(){const dw=cv.width||W,dh=cv.height||H,asp=dw/dh,base=Math.max(dw/W,dh/H),z=vh=>Math.max(1,(dh/Math.min(vh,W/asp))/base);
-// Garden: fit the bed and its tallest plants into the top half of the screen, above the cards.
-const a=P(0,0),bl=P(0,GR),br=P(GC,GR),top=a.y-105*Math.min(1,GU*1.3),bot=bl.y+30,left=bl.x-24,right=br.x+24,wide=asp>1.25&&dw>1100,frac=wide?.8:.4,vhG=Math.max((bot-top)/frac,(right-left)/(wide?asp*.6:asp*.94));
-return{garden:{x:(left+right)/2,y:top,z:z(vhG),ax:wide?.34:.5,ay:wide?.1:.075},meadow:{x:560,y:150,z:z(330),ax:.5,ay:.08},sky:{x:420,y:60,z:z(380),ax:.5,ay:.06},cottage:{x:108,y:200,z:z(230),ax:.5,ay:.08},river:{x:520,y:150,z:z(300),ax:.5,ay:.08},wide:{x:339,y:150,z:z(560),ax:.5,ay:.1}}}
+const L=gardenLayout(),top=P(0,0).y-105*GU,bot=P(0,GR).y+30,yc=(L.r.y0+L.r.y1)/2;
+return{garden:{x:339-L.ac*L.vw,y:(top+bot)/2-yc*L.vh,z:L.z,ax:0,ay:0},meadow:{x:560,y:150,z:z(330),ax:.5,ay:.08},sky:{x:420,y:60,z:z(380),ax:.5,ay:.06},cottage:{x:108,y:200,z:z(230),ax:.5,ay:.08},river:{x:520,y:150,z:z(300),ax:.5,ay:.08},wide:{x:339,y:150,z:z(560),ax:.5,ay:.1}}}
 let VIEW=opts.view||'garden',cam=null;
 function fitCanvas(){const r=window.devicePixelRatio||1,d=Math.min(2,r),w0=Math.round((cv.clientWidth||W)*d),h0=Math.round((cv.clientHeight||H)*d);if(w0>0&&h0>0&&(cv.width!==w0||cv.height!==h0)){cv.width=w0;cv.height=h0;return true}return false}
 function blit(dt){const T=views()[VIEW]||views().garden;cam=T;
 const dw=cv.width,dh=cv.height,sc=Math.max(dw/W,dh/H)*cam.z,vw=dw/sc,vh=dh/sc;let sx=cam.x-cam.ax*vw,sy=cam.y-cam.ay*vh;sx=vw>=W?(W-vw)/2:Math.max(0,Math.min(W-vw,sx));sy=vh>=H?(H-vh)/2:Math.max(0,Math.min(H-vh,sy));
 OUT.setTransform(1,0,0,1,0,0);OUT.imageSmoothingQuality='high';OUT.drawImage(F,sx*S,sy*S,vw*S,vh*S,0,0,dw,dh)}
-function fitGU(){const asp=(cv.width||W)/(cv.height||H),visW=Math.min(W,H*asp)*.9;return visW/((GARDEN?GARDEN.cols:9)+.9)/58}
+/* Where the bed may go on screen: the area not covered by the app's cards. Mirrors styles.css:
+   wide screens have a 420px card column on the right; elsewhere cards start below 55% of the height. */
+function gardenLayout(){const dw=cv.width||W,dh=cv.height||H,asp=dw/dh,base=Math.max(dw/W,dh/H),iw=window.innerWidth||dw,ih=window.innerHeight||dh,wide=iw>=1100&&iw/ih>=1.25;
+const r=wide?{x0:.03,x1:1-480/iw,y0:76/ih,y1:.96}:{x0:.05,x1:.95,y0:74/ih,y1:Math.min(.62,(.55*ih+56)/ih)};
+const ac=(r.x0+r.x1)/2,vwMax=Math.min(W,339/Math.max(ac,.05),339/Math.max(1-ac,.05),H*asp),z=Math.max(1,(dw/vwMax)/base),vw=dw/(base*z),vh=dh/(base*z),aw=(r.x1-r.x0)*vw,ah=(r.y1-r.y0)*vh;
+const gc=GARDEN?GARDEN.cols:9,gr=GARDEN?GARDEN.rows:5,gu=Math.max(.2,Math.min(9/gc,5/gr,1,aw*.94/((gc+.9)*58),(ah-34)/(39.2*gr+105)));
+return{z,vw,vh,r,ac,gu}}
 function cellsFor(m){const sn=m=='snow';if(!GARDEN){GC=9;GR=5;GU=1;GY0=0;const o=[];LAY[sn?'win':'sum'].forEach((row,gy)=>row.forEach((k,gx)=>{if(k!='-')o.push({k,gx,gy,w:NW[k]||1,h:1,g:1})}));return o}
-GC=GARDEN.cols;GR=GARDEN.rows;GU=Math.min(9/GC,5/GR,1,fitGU());GY0=(5-GR*GU)/2;const o=[];GARDEN.cells.forEach(c=>{let k=c.k,g=c.g==null?1:c.g;if(sn){k=WINTER[k]||((c.gx*3+c.gy)%4==0?'mnd':null);g=1}else k=SUMMER[k]||k;if(k)o.push({k,gx:c.gx,gy:c.gy,w:c.w||1,h:c.h||1,g})});return o}
+GC=GARDEN.cols;GR=GARDEN.rows;GU=gardenLayout().gu;GY0=(5-GR*GU)/2;const o=[];GARDEN.cells.forEach(c=>{let k=c.k,g=c.g==null?1:c.g;if(sn){k=WINTER[k]||((c.gx*3+c.gy)%4==0?'mnd':null);g=1}else k=SUMMER[k]||k;if(k)o.push({k,gx:c.gx,gy:c.gy,w:c.w||1,h:c.h||1,g})});return o}
 function redraw(){if(still&&!dead)frame(performance.now())}
 if(opts.spritesOnly)return{sprite:(k,v=0)=>spr(SUMMER[k]||k,v)};
-fitCanvas();let RO=null;if(typeof ResizeObserver!='undefined'){RO=new ResizeObserver(()=>{if(!fitCanvas()||dead)return;if(GARDEN&&Math.abs(Math.min(9/GC,5/GR,1,fitGU())-GU)>.02)build(mode);if(still)frame(performance.now())});RO.observe(cv)}
+fitCanvas();let RO=null;if(typeof ResizeObserver!='undefined'){RO=new ResizeObserver(()=>{if(!fitCanvas()||dead)return;if(GARDEN&&Math.abs(gardenLayout().gu-GU)>.02)build(mode);if(still)frame(performance.now())});RO.observe(cv)}
 build(opts.mode||'clear');raf=requestAnimationFrame(frame);
 return{setMode(m){if(m!==mode&&MODES[m]){build(m);redraw()}},setGarden(g){GARDEN=g||null;build(mode);redraw()},setView(v){if(v===VIEW)return;VIEW=v;redraw()},setStill(v){v=!!v;if(v===still)return;still=v;if(!still&&!dead){last=performance.now();raf=requestAnimationFrame(frame)}},destroy(){dead=true;cancelAnimationFrame(raf);if(RO)RO.disconnect()}};
 }
