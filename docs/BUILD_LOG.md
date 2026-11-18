@@ -29,3 +29,10 @@ The product idea, feature decisions, art direction and approval of the scene are
 - The painted world now fills the screen behind every tab, with a different camera view per tab (garden, meadow with turbines, sky, cottage, river) and a slow pan between them. The world was extended downward (more meadow) so the camera can frame the bed above the cards on phones.
 - Interface rebuilt as "storybook glass" after Apple's Liquid Glass guidance (controls float on a glass layer over edge-to-edge content): grainy translucent cards, a floating tab bar, a painted wooden bed in the planner, and colors that follow the sky (golden by day, grey in rain, pale in snow, dusky at night). The separate light/dark theme setting was removed because the sky now decides.
 - Wide screens put the Garden tab's cards in a right-hand column so the bed stays in view.
+
+## 2026-11-17: planting and visibility fixes
+
+- Tab switches cut straight to the new view instead of panning.
+- The scene sizes the bed to fit the screen width, so wide beds are fully visible on phones.
+- Newly planted crops show as seedlings (a sprout for seeds, a few true leaves for transplants) and switch to the grown plant once about a third of the way to harvest. Transplants now start at 10% grown instead of 25%.
+- One-tap planting: "Planted today" for each crop in the Plan tab's crop list, and "I planted it today" on This week tasks. Tapping a crop in the bed still lets you pick a different date.

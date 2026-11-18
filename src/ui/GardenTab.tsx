@@ -18,6 +18,9 @@ export const CHECKLIST: { key: string; text: string }[] = [
 
 interface Task {
   key: string;
+  plantId: string;
+  /** Show the one-tap "planted it" button. */
+  canPlant: boolean;
   text: string;
   detail: string;
   tone: 'go' | 'wait' | 'harvest';
@@ -39,6 +42,7 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
   const settings = useStore((s) => s.settings);
   const checklist = useStore((s) => s.checklist);
   const toggleChecklist = useStore((s) => s.toggleChecklist);
+  const plantCrop = useStore((s) => s.plantCrop);
   const { weather, loading, failed, refresh } = wx;
 
   const now = today();
@@ -60,13 +64,13 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
     for (const plant of plants) {
       const mine = plantings.filter((p) => p.plantId === plant.id);
       if (mine.some((p) => growth(plant, p, now).phase === 'harvest')) {
-        out.push({ key: `${plant.id}-h`, text: `${plant.name} is ready to harvest`, detail: 'Pick it, then log it in the Harvest tab.', tone: 'harvest' });
+        out.push({ key: `${plant.id}-h`, plantId: plant.id, canPlant: false, text: `${plant.name} is ready to harvest`, detail: 'Pick it, then log it in the Harvest tab.', tone: 'harvest' });
       }
       if (!frost || mine.every((p) => p.plantedOn)) continue;
       for (const cal of calendarsFor(plant, frost, Number(now.slice(0, 4)))) {
         const status = plantingStatus(plant, cal, now, cond);
         if (status.state === 'early' || status.state === 'past') continue;
-        out.push({ key: `${plant.id}-${cal.season}`, text: `${plant.name}: ${status.text}`, detail: cal.why, tone: status.state === 'wait-warm' || status.state === 'soon' ? 'wait' : 'go' });
+        out.push({ key: `${plant.id}-${cal.season}`, plantId: plant.id, canPlant: ['now', 'late', 'wait-warm'].includes(status.state), text: `${plant.name}: ${status.text}`, detail: cal.why, tone: status.state === 'wait-warm' || status.state === 'soon' ? 'wait' : 'go' });
         break;
       }
     }
@@ -139,6 +143,7 @@ export function GardenTab({ wx, choice, onChoice, sky, onGoPlan, onGoMore }: Pro
               <li key={t.key} className={`task task--${t.tone}`}>
                 <strong>{t.text}</strong>
                 <span>{t.detail}</span>
+                {t.canPlant && <button className="btn btn--small btn--primary task-btn" onClick={() => plantCrop(t.plantId, now)}>I planted it today</button>}
               </li>
             ))}
           </ul>

@@ -33,7 +33,7 @@ describe('growth phases', () => {
   });
   it('gives seedlings a head start', () => {
     const g = growth(tomato, at('tomato', 0, 0, { plantedOn: '2027-05-10' }), '2027-05-10');
-    expect(g.fraction).toBe(0.25);
+    expect(g.fraction).toBe(0.1);
     expect(g.phase).toBe('sprout');
   });
   it('never calls a perennial finished', () => {

@@ -31,8 +31,8 @@ export function growth(plant: Plant, planting: Planting, today: ISO): Growth {
   const method = planting.method ?? plant.start[0];
   const dtm = effectiveDtm(plant, method);
   const daysIn = diffDays(today, planting.plantedOn);
-  // Seedlings go in already partly grown.
-  const head = method === 'transplant' ? 0.25 : 0;
+  // Seedlings from a nursery or windowsill go in slightly ahead of seeds.
+  const head = method === 'transplant' ? 0.1 : 0;
   const fraction = Math.min(1, head + (1 - head) * (daysIn / dtm));
   const harvestFrom = addDays(planting.plantedOn, dtm);
   const harvestTo = addDays(harvestFrom, plant.harvestDays);

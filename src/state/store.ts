@@ -48,6 +48,8 @@ interface Actions {
   removePlanting(id: string): void;
   clearBed(): void;
   markPlanted(id: string, plantedOn: ISO | null, method?: StartMethod, wholeCrop?: boolean): void;
+  /** Mark every tile of one crop as planted on a date (or not planted, with null). */
+  plantCrop(plantId: string, plantedOn: ISO | null): void;
   undo(): void;
   redo(): void;
   addHarvest(h: Omit<Harvest, 'id'>): void;
@@ -194,6 +196,11 @@ export const useStore = create<State>()((set, get) => {
         const { plantedOn: _old, method: _m, ...rest } = p;
         return plantedOn ? { ...rest, plantedOn, method: method ?? getPlant(p.plantId)?.start[0] } : rest;
       }));
+    },
+
+    plantCrop(plantId, plantedOn) {
+      const first = get().plantings.find((p) => p.plantId === plantId);
+      if (first) get().markPlanted(first.id, plantedOn, undefined, true);
     },
 
     undo: () => set((s) => (s.past.length ? { plantings: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.plantings, ...s.future] } : {})),

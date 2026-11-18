@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  checkGarden, density, getPlant, MAX_COLS, MAX_ROWS, plantCounts, plantingAt, PLANTS, rectOf, starterSet, worstLevels,
+  checkGarden, density, fmtDate, getPlant, MAX_COLS, MAX_ROWS, plantCounts, plantingAt, PLANTS, rectOf, starterSet, worstLevels,
   type Category, type Garden, type Planting,
 } from '../engine';
-import { useStore } from '../state/store';
+import { today, useStore } from '../state/store';
 import { PlantIcon, Segmented, Sheet, Stepper, SUN_LABEL } from './bits';
 import { PlantSheet } from './PlantSheet';
 
@@ -18,7 +18,7 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
   const frost = useStore((s) => s.frost);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
-  const { addPlanting, movePlanting, undo, redo, clearBed } = useStore.getState();
+  const { addPlanting, movePlanting, undo, redo, clearBed, plantCrop } = useStore.getState();
 
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [armed, setArmed] = useState<string | null>(null); // plant chosen in the drawer, waiting for a tile
@@ -169,9 +169,27 @@ export function PlanTab({ onLogHarvest }: { onLogHarvest: (plantId: string) => v
       {plantings.length > 0 && (
         <section className="glass card">
           <h2>In this bed</h2>
-          <ul className="count-list">
-            {[...counts].map(([id, n]) => <li key={id}><PlantIcon plantId={id} size={28} />{n} × {getPlant(id)!.name}</li>)}
+          <p className="note">Mark each crop as planted when it goes in. The garden scene then grows it from a seedling.</p>
+          <ul className="crop-list">
+            {[...counts].map(([id, n]) => {
+              const plant = getPlant(id)!;
+              const tiles = plantings.filter((p) => p.plantId === id);
+              const planted = tiles.find((p) => p.plantedOn)?.plantedOn;
+              return (
+                <li key={id}>
+                  <PlantIcon plantId={id} size={34} />
+                  <span className="grow">
+                    <strong>{n} × {plant.name}</strong>
+                    <span className="note">{planted ? `Planted ${fmtDate(planted)}` : 'Not planted yet'}</span>
+                  </span>
+                  {planted
+                    ? <button className="btn btn--small btn--quiet" onClick={() => plantCrop(id, null)}>Undo</button>
+                    : <button className="btn btn--small btn--primary" onClick={() => plantCrop(id, today())}>Planted today</button>}
+                </li>
+              );
+            })}
           </ul>
+          <p className="note">Planted on a different day? Tap the crop in the bed to set the date.</p>
         </section>
       )}
 
